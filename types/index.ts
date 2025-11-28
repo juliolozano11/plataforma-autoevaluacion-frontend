@@ -126,6 +126,10 @@ export interface Evaluation {
   updatedAt: string;
 }
 
+export interface EvaluationWithAnswers extends Evaluation {
+  answers?: Answer[];
+}
+
 // Interfaces de respuesta
 export interface Answer {
   _id: string;

@@ -1,6 +1,6 @@
 import apiClient from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
-import { Evaluation, SubmitAnswerDto } from '@/types';
+import { Evaluation, EvaluationWithAnswers, SubmitAnswerDto } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Hook para obtener evaluaciones del usuario
@@ -36,7 +36,7 @@ export const useEvaluations = (sectionId?: string) => {
 export const useEvaluation = (id: string) => {
   return useQuery({
     queryKey: ['evaluations', id],
-    queryFn: async (): Promise<Evaluation> => {
+    queryFn: async (): Promise<EvaluationWithAnswers> => {
       const { data } = await apiClient.get(API_ENDPOINTS.evaluations.byId(id));
       return data;
     },
