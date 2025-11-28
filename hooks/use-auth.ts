@@ -45,7 +45,7 @@ export const useRegister = () => {
 
 // Hook para obtener perfil
 export const useProfile = () => {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, accessToken } = useAuthStore();
 
   const query = useQuery({
     queryKey: ['user', 'profile'],
@@ -53,11 +53,12 @@ export const useProfile = () => {
       const { data } = await apiClient.get(API_ENDPOINTS.auth.profile);
       return data;
     },
-    enabled: !!user,
+    enabled: !!accessToken && !user, // Solo cargar si hay token pero no hay usuario
+    retry: 1, // Solo reintentar una vez si falla
   });
 
   // Actualizar store cuando los datos cambien
-  if (query.data) {
+  if (query.data && query.data !== user) {
     setUser(query.data);
   }
 

@@ -200,7 +200,9 @@ export default function SectionsPage() {
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {section.isActive ? 'Activa' : 'Inactiva'}
+                      {section.isActive
+                        ? 'Visible para estudiantes'
+                        : 'Oculta para estudiantes'}
                     </span>
                   </div>
                   <p className='text-sm text-gray-500 mt-1'>
@@ -219,7 +221,7 @@ export default function SectionsPage() {
                     onClick={() => toggleActive.mutate(section._id)}
                     disabled={toggleActive.isPending}
                   >
-                    {section.isActive ? 'Desactivar' : 'Activar'}
+                    {section.isActive ? 'Ocultar' : 'Mostrar'}
                   </Button>
                   <Button
                     variant='outline'

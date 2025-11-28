@@ -1,20 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
-import { ErrorMessage } from '@/components/ui/error-message';
 import {
-  useEvaluationConfigs,
   useCreateEvaluationConfig,
-  useUpdateEvaluationConfig,
-  useToggleEvaluationConfigActive,
   useDeleteEvaluationConfig,
+  useEvaluationConfigs,
+  useToggleEvaluationConfigActive,
+  useUpdateEvaluationConfig,
 } from '@/hooks/use-evaluation-config';
 import { useSections } from '@/hooks/use-sections';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 const configSchema = z.object({
@@ -45,12 +44,11 @@ type ConfigFormData = z.infer<typeof configSchema>;
 
 export default function EvaluationConfigPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [formSectionId, setFormSectionId] = useState<string>('');
 
   const { data: sections, isLoading: sectionsLoading } = useSections();
-  const { data: configs, isLoading: configsLoading } = useEvaluationConfigs(
-    selectedSectionId || undefined
-  );
+  // Siempre mostrar todas las configuraciones, no filtrar por sección
+  const { data: configs, isLoading: configsLoading } = useEvaluationConfigs();
   const createConfig = useCreateEvaluationConfig();
   const updateConfig = useUpdateEvaluationConfig();
   const toggleActive = useToggleEvaluationConfigActive();
@@ -83,7 +81,7 @@ export default function EvaluationConfigPage() {
       }
       reset();
       setEditingId(null);
-      setSelectedSectionId('');
+      setFormSectionId('');
     } catch (err) {
       console.error('Error al guardar configuración:', err);
     }
@@ -91,8 +89,9 @@ export default function EvaluationConfigPage() {
 
   const handleEdit = (config: any) => {
     setEditingId(config._id);
-    setSelectedSectionId(config.sectionId._id || config.sectionId);
-    setValue('sectionId', config.sectionId._id || config.sectionId);
+    const sectionId = config.sectionId._id || config.sectionId;
+    setFormSectionId(sectionId);
+    setValue('sectionId', sectionId);
     setValue('muyBajo', config.muyBajo);
     setValue('bajo', config.bajo);
     setValue('intermedio', config.intermedio);
@@ -103,7 +102,7 @@ export default function EvaluationConfigPage() {
   const handleCancel = () => {
     reset();
     setEditingId(null);
-    setSelectedSectionId('');
+    setFormSectionId('');
   };
 
   const handleDelete = async (id: string) => {
@@ -155,7 +154,10 @@ export default function EvaluationConfigPage() {
               {...register('sectionId')}
               className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
               disabled={!!editingId}
-              onChange={(e) => setSelectedSectionId(e.target.value)}
+              onChange={(e) => {
+                setFormSectionId(e.target.value);
+                // No afectar el filtro de configuraciones existentes
+              }}
             >
               <option value=''>Selecciona una sección</option>
               {sections?.map((section) => (
@@ -239,9 +241,7 @@ export default function EvaluationConfigPage() {
         </h2>
         {configs && configs.length === 0 ? (
           <Card className='p-6 text-center'>
-            <p className='text-gray-500'>
-              No hay configuraciones creadas aún
-            </p>
+            <p className='text-gray-500'>No hay configuraciones creadas aún</p>
           </Card>
         ) : (
           configs?.map((config: any) => (
@@ -329,4 +329,3 @@ export default function EvaluationConfigPage() {
     </div>
   );
 }
-

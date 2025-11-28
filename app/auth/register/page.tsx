@@ -108,6 +108,7 @@ export default function RegisterPage() {
             type='password'
             placeholder='••••••••'
             error={errors.password?.message}
+            showPasswordToggle
             {...registerField('password')}
           />
 

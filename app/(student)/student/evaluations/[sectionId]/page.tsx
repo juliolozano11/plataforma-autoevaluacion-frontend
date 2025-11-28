@@ -40,6 +40,16 @@ export default function EvaluationPage() {
 
   // Buscar o crear evaluación
   useEffect(() => {
+    // No crear evaluación si la sección está bloqueada
+    if (section && !section.isActive) {
+      return;
+    }
+
+    // No crear evaluación si no hay cuestionarios
+    if (!questionnaires || questionnaires.length === 0) {
+      return;
+    }
+
     const existingEvaluation = evaluations?.find((e) =>
       typeof e.sectionId === 'object'
         ? e.sectionId._id === sectionId
@@ -51,28 +61,39 @@ export default function EvaluationPage() {
       if (existingEvaluation.status === EvaluationStatus.IN_PROGRESS) {
         // Cargar respuestas existentes si hay
       }
-    } else if (evaluations && !createEvaluation.isPending) {
-      // Crear nueva evaluación
+    } else if (
+      evaluations &&
+      !createEvaluation.isPending &&
+      section?.isActive
+    ) {
+      // Crear nueva evaluación solo si la sección está activa
       createEvaluation.mutate(
         { sectionId },
         {
           onSuccess: (data) => {
             setEvaluationId(data._id);
           },
+          onError: (error) => {
+            console.error('Error al crear evaluación:', error);
+          },
         }
       );
     }
-  }, [evaluations, sectionId]);
+  }, [evaluations, sectionId, section, questionnaires, createEvaluation]);
 
   // Iniciar evaluación cuando esté lista
   useEffect(() => {
     if (evaluationId && questions && questions.length > 0) {
       const evaluation = evaluations?.find((e) => e._id === evaluationId);
       if (evaluation && evaluation.status === EvaluationStatus.PENDING) {
-        startEvaluation.mutate(evaluationId);
+        startEvaluation.mutate(evaluationId, {
+          onError: (error) => {
+            console.error('Error al iniciar evaluación:', error);
+          },
+        });
       }
     }
-  }, [evaluationId, questions, evaluations]);
+  }, [evaluationId, questions, evaluations, startEvaluation]);
 
   const handleAnswerChange = (questionId: string, value: string | number) => {
     setAnswers((prev) => ({
@@ -141,6 +162,36 @@ export default function EvaluationPage() {
     return (
       <div className='flex justify-center py-12'>
         <Loading size='lg' />
+      </div>
+    );
+  }
+
+  // Verificar si la sección está bloqueada
+  if (section && !section.isActive) {
+    return (
+      <div className='flex justify-center py-12'>
+        <Card className='p-6 max-w-md'>
+          <div className='text-center'>
+            <div className='mb-4'>
+              <span className='inline-block px-4 py-2 rounded-full bg-red-100 text-red-800 text-sm font-medium'>
+                Bloqueada
+              </span>
+            </div>
+            <h2 className='text-xl font-semibold text-gray-900 mb-2'>
+              Evaluación no disponible
+            </h2>
+            <p className='text-gray-600 mb-4'>
+              Esta evaluación no está disponible en este momento. Por favor,
+              contacta al administrador.
+            </p>
+            <Button
+              onClick={() => router.push('/student/evaluations')}
+              variant='outline'
+            >
+              Volver a Evaluaciones
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }
