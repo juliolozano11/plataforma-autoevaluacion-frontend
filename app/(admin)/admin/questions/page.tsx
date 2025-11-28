@@ -76,8 +76,7 @@ export default function QuestionsPage() {
     },
   });
 
-  const questionType = watch('type');
-  const [options, setOptions] = useState<string[]>(['']);
+  // Todas las preguntas son tipo scale, no necesitamos options
 
   useEffect(() => {
     if (questionnaireIdParam) {
@@ -106,7 +105,6 @@ export default function QuestionsPage() {
         setIsCreating(false);
       }
       reset();
-      setOptions(['']);
     } catch (err) {
       console.error('Error al guardar pregunta:', err);
     }
@@ -121,44 +119,23 @@ export default function QuestionsPage() {
         : question.questionnaireId;
     setValue('questionnaireId', qId);
     setValue('text', question.text);
-    setValue('type', question.type);
+    setValue('type', QuestionType.SCALE); // Todas son tipo scale
     setValue('points', question.points);
     setValue('order', question.order);
-    setValue('correctAnswer', question.correctAnswer);
     setValue('minScale', question.minScale ?? 1);
     setValue('maxScale', question.maxScale ?? 10);
-    if (question.options) {
-      setOptions(question.options);
-    } else {
-      setOptions(['']);
-    }
   };
 
   const handleCancel = () => {
     setIsCreating(false);
     setEditingId(null);
     reset();
-    setOptions(['']);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar esta pregunta?')) {
       await deleteQuestion.mutateAsync(id);
     }
-  };
-
-  const addOption = () => {
-    setOptions([...options, '']);
-  };
-
-  const updateOption = (index: number, value: string) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
-  };
-
-  const removeOption = (index: number) => {
-    setOptions(options.filter((_, i) => i !== index));
   };
 
   const getQuestionnaireName = (qId: string | Questionnaire) => {
@@ -310,46 +287,6 @@ export default function QuestionsPage() {
                 </p>
               </div>
             </div>
-
-            {/* Ocultar opciones múltiples - no se usan */}
-            {false && questionType === QuestionType.MULTIPLE_CHOICE && (
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>
-                  Opciones
-                </label>
-                <div className='space-y-2'>
-                  {options.map((option, index) => (
-                    <div key={index} className='flex gap-2'>
-                      <input
-                        type='text'
-                        value={option}
-                        onChange={(e) => updateOption(index, e.target.value)}
-                        className='flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
-                        placeholder={`Opción ${index + 1}`}
-                      />
-                      {options.length > 1 && (
-                        <Button
-                          type='button'
-                          variant='danger'
-                          size='sm'
-                          onClick={() => removeOption(index)}
-                        >
-                          ✕
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    onClick={addOption}
-                  >
-                    ➕ Agregar Opción
-                  </Button>
-                </div>
-              </div>
-            )}
 
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-1'>
