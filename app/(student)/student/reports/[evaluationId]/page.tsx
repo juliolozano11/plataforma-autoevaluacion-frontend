@@ -24,6 +24,13 @@ const levelColors: Record<EvaluationLevel, string> = {
   [EvaluationLevel.MUY_ALTO]: 'bg-green-100 text-green-800',
 };
 
+// Helper function to validate and get level
+const getValidLevel = (level: any): EvaluationLevel | null => {
+  if (!level) return null;
+  const validLevel = level as EvaluationLevel;
+  return Object.values(EvaluationLevel).includes(validLevel) ? validLevel : null;
+};
+
 export default function IndividualReportPage() {
   const params = useParams();
   const evaluationId = params.evaluationId as string;
@@ -75,15 +82,18 @@ export default function IndividualReportPage() {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Nivel Alcanzado</p>
-            {evaluation.level && (
-              <span
-                className={`inline-block px-4 py-2 rounded-full text-lg font-semibold mt-2 ${
-                  levelColors[evaluation.level]
-                }`}
-              >
-                {levelLabels[evaluation.level]}
-              </span>
-            )}
+            {(() => {
+              const validLevel = getValidLevel(evaluation.level);
+              return validLevel ? (
+                <span
+                  className={`inline-block px-4 py-2 rounded-full text-lg font-semibold mt-2 ${
+                    levelColors[validLevel]
+                  }`}
+                >
+                  {levelLabels[validLevel]}
+                </span>
+              ) : null;
+            })()}
           </div>
         </div>
       </Card>
@@ -95,8 +105,7 @@ export default function IndividualReportPage() {
             Resultados por Sección
           </h2>
           {report.sections.map((sectionResult: any, index: number) => {
-            const level = sectionResult.level as EvaluationLevel;
-            const isValidLevel = level && Object.values(EvaluationLevel).includes(level);
+            const validLevel = getValidLevel(sectionResult.level);
             
             return (
             <Card key={index} className="p-6">
@@ -104,13 +113,13 @@ export default function IndividualReportPage() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   {sectionResult.sectionName || `Sección ${index + 1}`}
                 </h3>
-                {isValidLevel && (
+                {validLevel && (
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      levelColors[level]
+                      levelColors[validLevel]
                     }`}
                   >
-                    {levelLabels[level]}
+                    {levelLabels[validLevel]}
                   </span>
                 )}
               </div>
