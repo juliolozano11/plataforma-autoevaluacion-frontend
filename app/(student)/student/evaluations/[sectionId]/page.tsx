@@ -28,10 +28,11 @@ export default function EvaluationPage() {
   const [evaluationId, setEvaluationId] = useState<string | null>(null);
 
   const { data: section, isLoading: sectionLoading } = useSection(sectionId);
-  const { data: questionnaires } = useActiveQuestionnaires(sectionId);
-  const { data: questions, isLoading: questionsLoading } = useQuestions(
-    questionnaires?.[0]?._id
-  );
+  const { data: questionnaires, isLoading: questionnairesLoading } =
+    useActiveQuestionnaires(sectionId);
+  const questionnaireId = questionnaires?.[0]?._id;
+  const { data: questions, isLoading: questionsLoading } =
+    useQuestions(questionnaireId);
   const { data: evaluations } = useEvaluations(sectionId);
   const createEvaluation = useCreateEvaluation();
   const startEvaluation = useStartEvaluation();
@@ -103,9 +104,12 @@ export default function EvaluationPage() {
   };
 
   const handleNext = async () => {
-    if (!evaluationId || !questions) return;
+    if (!evaluationId || !questions || questions.length === 0) return;
 
-    const currentQuestion = questions[currentQuestionIndex];
+    const validIndex = Math.min(currentQuestionIndex, questions.length - 1);
+    const currentQuestion = questions[validIndex];
+    if (!currentQuestion) return;
+
     const answer = answers[currentQuestion._id];
 
     if (answer !== undefined && answer !== null && answer !== '') {
@@ -122,8 +126,8 @@ export default function EvaluationPage() {
       }
     }
 
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    if (validIndex < questions.length - 1) {
+      setCurrentQuestionIndex(validIndex + 1);
     }
   };
 
@@ -158,7 +162,7 @@ export default function EvaluationPage() {
     }
   };
 
-  if (sectionLoading || questionsLoading) {
+  if (sectionLoading || questionnairesLoading || questionsLoading) {
     return (
       <div className='flex justify-center py-12'>
         <Loading size='lg' />
@@ -196,7 +200,24 @@ export default function EvaluationPage() {
     );
   }
 
-  if (!section || !questions || questions.length === 0) {
+  // Validar que existan los datos necesarios
+  if (!section) {
+    return (
+      <div className='flex justify-center py-12'>
+        <ErrorMessage message='Sección no encontrada' />
+      </div>
+    );
+  }
+
+  if (!questionnaires || questionnaires.length === 0) {
+    return (
+      <div className='flex justify-center py-12'>
+        <ErrorMessage message='No hay cuestionarios disponibles para esta sección' />
+      </div>
+    );
+  }
+
+  if (!questions || questions.length === 0) {
     return (
       <div className='flex justify-center py-12'>
         <ErrorMessage message='No hay preguntas disponibles para esta evaluación' />
@@ -204,10 +225,31 @@ export default function EvaluationPage() {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Validar que el índice esté dentro del rango
+  const validQuestionIndex = Math.min(
+    Math.max(0, currentQuestionIndex),
+    questions.length - 1
+  );
+  const currentQuestion = questions[validQuestionIndex];
+
+  if (!currentQuestion) {
+    return (
+      <div className='flex justify-center py-12'>
+        <Loading size='lg' />
+      </div>
+    );
+  }
+
+  // Ajustar el índice si es necesario
+  useEffect(() => {
+    if (currentQuestionIndex !== validQuestionIndex) {
+      setCurrentQuestionIndex(validQuestionIndex);
+    }
+  }, [currentQuestionIndex, validQuestionIndex]);
+
   const currentAnswer = answers[currentQuestion._id];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+  const progress = ((validQuestionIndex + 1) / questions.length) * 100;
+  const isLastQuestion = validQuestionIndex === questions.length - 1;
 
   return (
     <div className='max-w-4xl mx-auto space-y-6'>
@@ -222,7 +264,7 @@ export default function EvaluationPage() {
       <Card className='p-4'>
         <div className='flex items-center justify-between mb-2'>
           <span className='text-sm font-medium text-gray-700'>
-            Pregunta {currentQuestionIndex + 1} de {questions.length}
+            Pregunta {validQuestionIndex + 1} de {questions.length}
           </span>
           <span className='text-sm font-medium text-gray-700'>
             {Math.round(progress)}%
@@ -333,7 +375,7 @@ export default function EvaluationPage() {
           <Button
             variant='outline'
             onClick={handlePrevious}
-            disabled={currentQuestionIndex === 0}
+            disabled={validQuestionIndex === 0}
           >
             ← Anterior
           </Button>
@@ -365,7 +407,7 @@ export default function EvaluationPage() {
         <div className='flex flex-wrap gap-2'>
           {questions.map((q, index) => {
             const isAnswered = answers[q._id] !== undefined;
-            const isCurrent = index === currentQuestionIndex;
+            const isCurrent = index === validQuestionIndex;
             return (
               <button
                 key={q._id}

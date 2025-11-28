@@ -8,12 +8,14 @@ export const useQuestions = (questionnaireId?: string) => {
   return useQuery({
     queryKey: ['questions', questionnaireId],
     queryFn: async (): Promise<Question[]> => {
-      const url = questionnaireId
-        ? `${API_ENDPOINTS.questions.list}?questionnaireId=${questionnaireId}`
-        : API_ENDPOINTS.questions.list;
+      if (!questionnaireId) {
+        return [];
+      }
+      const url = `${API_ENDPOINTS.questions.list}?questionnaireId=${questionnaireId}`;
       const { data } = await apiClient.get(url);
       return data;
     },
+    enabled: !!questionnaireId, // Solo ejecutar si hay questionnaireId
   });
 };
 
