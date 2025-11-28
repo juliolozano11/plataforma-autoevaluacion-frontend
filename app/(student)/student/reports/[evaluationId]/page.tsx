@@ -94,19 +94,23 @@ export default function IndividualReportPage() {
           <h2 className="text-2xl font-semibold text-gray-900">
             Resultados por Sección
           </h2>
-          {report.sections.map((sectionResult: any, index: number) => (
+          {report.sections.map((sectionResult: any, index: number) => {
+            const level = sectionResult.level as EvaluationLevel;
+            const isValidLevel = level && Object.values(EvaluationLevel).includes(level);
+            
+            return (
             <Card key={index} className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
                   {sectionResult.sectionName || `Sección ${index + 1}`}
                 </h3>
-                {sectionResult.level && (
+                {isValidLevel && (
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      levelColors[sectionResult.level]
+                      levelColors[level]
                     }`}
                   >
-                    {levelLabels[sectionResult.level]}
+                    {levelLabels[level]}
                   </span>
                 )}
               </div>
@@ -127,7 +131,8 @@ export default function IndividualReportPage() {
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
