@@ -8,6 +8,7 @@ import { Loading } from '@/components/ui/loading';
 import {
   useCompleteEvaluation,
   useCreateEvaluation,
+  useEvaluation,
   useEvaluations,
   useStartEvaluation,
   useSubmitAnswer,
@@ -51,6 +52,29 @@ function EvaluationPageContent() {
   const startEvaluation = useStartEvaluation();
   const submitAnswer = useSubmitAnswer();
   const completeEvaluation = useCompleteEvaluation();
+
+  // Cargar evaluación con respuestas si existe
+  const { data: evaluationWithAnswers } = useEvaluation(evaluationId || '');
+
+  // Cargar respuestas existentes cuando la evaluación está en progreso
+  useEffect(() => {
+    if (
+      evaluationWithAnswers?.answers &&
+      Array.isArray(evaluationWithAnswers.answers)
+    ) {
+      const loadedAnswers: Record<string, any> = {};
+      evaluationWithAnswers.answers.forEach((answer: any) => {
+        const questionId =
+          typeof answer.questionId === 'object'
+            ? answer.questionId._id
+            : answer.questionId;
+        if (questionId) {
+          loadedAnswers[questionId] = answer.value;
+        }
+      });
+      setAnswers(loadedAnswers);
+    }
+  }, [evaluationWithAnswers]);
 
   // Ajustar el índice si es necesario cuando cambian las preguntas
   // ⚠️ IMPORTANTE: Este hook debe estar ANTES de cualquier return condicional
@@ -110,9 +134,7 @@ function EvaluationPageContent() {
 
       if (existingEvaluation) {
         setEvaluationId(existingEvaluation._id);
-        if (existingEvaluation.status === EvaluationStatus.IN_PROGRESS) {
-          // Cargar respuestas existentes si hay
-        }
+        // No crear nueva evaluación si ya existe
       } else if (
         evaluationsArray.length === 0 &&
         !createEvaluation.isPending &&

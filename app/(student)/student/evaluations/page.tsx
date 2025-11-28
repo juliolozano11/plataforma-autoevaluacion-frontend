@@ -6,9 +6,10 @@ import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useSections } from '@/hooks/use-sections';
 import { EvaluationStatus, Section } from '@/types';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function EvaluationsPage() {
+  const router = useRouter();
   const { data: evaluations, isLoading } = useEvaluations();
   // Mostrar todas las secciones (activas e inactivas) para que los estudiantes vean las bloqueadas
   const { data: sections } = useSections();
@@ -93,9 +94,13 @@ export default function EvaluationsPage() {
                         Bloqueada
                       </Button>
                     ) : (
-                      <Link href={`/student/evaluations/${sectionId}`}>
-                        <Button>Comenzar</Button>
-                      </Link>
+                      <Button
+                        onClick={() =>
+                          router.push(`/student/evaluations/${sectionId}`)
+                        }
+                      >
+                        Comenzar
+                      </Button>
                     )}
                   </div>
                 </Card>
@@ -128,13 +133,14 @@ export default function EvaluationsPage() {
                       </p>
                     )}
                   </div>
-                  <Link
-                    href={`/student/evaluations/${getSectionId(
-                      evaluation.sectionId
-                    )}`}
+                  <Button
+                    onClick={() => {
+                      const sectionId = getSectionId(evaluation.sectionId);
+                      router.push(`/student/evaluations/${sectionId}`);
+                    }}
                   >
-                    <Button>Continuar</Button>
-                  </Link>
+                    Continuar
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -177,9 +183,14 @@ export default function EvaluationsPage() {
                       </p>
                     )}
                   </div>
-                  <Link href={`/student/reports/${evaluation._id}`}>
-                    <Button variant='outline'>Ver Resultados</Button>
-                  </Link>
+                  <Button
+                    variant='outline'
+                    onClick={() =>
+                      router.push(`/student/reports/${evaluation._id}`)
+                    }
+                  >
+                    Ver Resultados
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -247,9 +258,13 @@ export default function EvaluationsPage() {
                           Bloqueada
                         </Button>
                       ) : (
-                        <Link href={`/student/evaluations/${section._id}`}>
-                          <Button>Comenzar</Button>
-                        </Link>
+                        <Button
+                          onClick={() =>
+                            router.push(`/student/evaluations/${section._id}`)
+                          }
+                        >
+                          Comenzar
+                        </Button>
                       )}
                     </div>
                   </Card>
