@@ -1,18 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/ui/loading';
+import { Card } from '@/components/ui/card';
 import { ErrorMessage } from '@/components/ui/error-message';
-import { useQuestions, useCreateQuestion, useUpdateQuestion, useDeleteQuestion, useToggleQuestionActive } from '@/hooks/use-questions';
+import { Loading } from '@/components/ui/loading';
 import { useQuestionnaires } from '@/hooks/use-questionnaires';
-import { QuestionType } from '@/types';
-import { useForm } from 'react-hook-form';
+import {
+  useCreateQuestion,
+  useDeleteQuestion,
+  useQuestions,
+  useToggleQuestionActive,
+  useUpdateQuestion,
+} from '@/hooks/use-questions';
+import { Question, Questionnaire, QuestionType } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import Link from 'next/link';
 
 const questionSchema = z.object({
   questionnaireId: z.string().min(1, 'Debes seleccionar un cuestionario'),
@@ -29,12 +34,18 @@ type QuestionFormData = z.infer<typeof questionSchema>;
 export default function QuestionsPage() {
   const searchParams = useSearchParams();
   const questionnaireIdParam = searchParams.get('questionnaireId');
-  
+
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedQuestionnaireId, setSelectedQuestionnaireId] = useState(questionnaireIdParam || '');
-  
-  const { data: questions, isLoading, error } = useQuestions(selectedQuestionnaireId || undefined);
+  const [selectedQuestionnaireId, setSelectedQuestionnaireId] = useState(
+    questionnaireIdParam || ''
+  );
+
+  const {
+    data: questions,
+    isLoading,
+    error,
+  } = useQuestions(selectedQuestionnaireId || undefined);
   const { data: questionnaires } = useQuestionnaires();
   const createQuestion = useCreateQuestion();
   const updateQuestion = useUpdateQuestion();
@@ -72,9 +83,10 @@ export default function QuestionsPage() {
     try {
       const questionData = {
         ...data,
-        options: questionType === QuestionType.MULTIPLE_CHOICE 
-          ? options.filter((opt) => opt.trim() !== '')
-          : undefined,
+        options:
+          questionType === QuestionType.MULTIPLE_CHOICE
+            ? options.filter((opt) => opt.trim() !== '')
+            : undefined,
       };
 
       if (editingId) {
@@ -91,12 +103,13 @@ export default function QuestionsPage() {
     }
   };
 
-  const handleEdit = (question: any) => {
+  const handleEdit = (question: Question) => {
     setEditingId(question._id);
     setIsCreating(false);
-    const qId = typeof question.questionnaireId === 'object' 
-      ? question.questionnaireId._id 
-      : question.questionnaireId;
+    const qId =
+      typeof question.questionnaireId === 'object'
+        ? question.questionnaireId._id
+        : question.questionnaireId;
     setValue('questionnaireId', qId);
     setValue('text', question.text);
     setValue('type', question.type);
@@ -137,7 +150,7 @@ export default function QuestionsPage() {
     setOptions(options.filter((_, i) => i !== index));
   };
 
-  const getQuestionnaireName = (qId: string | any) => {
+  const getQuestionnaireName = (qId: string | Questionnaire) => {
     if (typeof qId === 'object') {
       return qId.title;
     }
@@ -147,49 +160,49 @@ export default function QuestionsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loading size="lg" />
+      <div className='flex justify-center py-12'>
+        <Loading size='lg' />
       </div>
     );
   }
 
   if (error) {
-    return <ErrorMessage message="Error al cargar las preguntas" />;
+    return <ErrorMessage message='Error al cargar las preguntas' />;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className='space-y-6'>
+      <div className='flex justify-between items-center'>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Preguntas</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className='text-3xl font-bold text-gray-900'>
+            Gestión de Preguntas
+          </h1>
+          <p className='mt-2 text-gray-600'>
             Administra las preguntas de los cuestionarios
           </p>
         </div>
         {!isCreating && !editingId && (
-          <Button onClick={() => setIsCreating(true)}>
-            ➕ Nueva Pregunta
-          </Button>
+          <Button onClick={() => setIsCreating(true)}>➕ Nueva Pregunta</Button>
         )}
       </div>
 
       {(isCreating || editingId) && (
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <Card className='p-6'>
+          <h2 className='text-xl font-semibold text-gray-900 mb-4'>
             {editingId ? 'Editar Pregunta' : 'Nueva Pregunta'}
           </h2>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
                 Cuestionario
               </label>
               <select
                 {...register('questionnaireId')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
+                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
                 disabled={!!editingId}
                 onChange={(e) => setSelectedQuestionnaireId(e.target.value)}
               >
-                <option value="">Selecciona un cuestionario</option>
+                <option value=''>Selecciona un cuestionario</option>
                 {questionnaires?.map((q) => (
                   <option key={q._id} value={q._id}>
                     {q.title}
@@ -197,73 +210,79 @@ export default function QuestionsPage() {
                 ))}
               </select>
               {errors.questionnaireId && (
-                <p className="mt-1 text-sm text-red-600">{errors.questionnaireId.message}</p>
+                <p className='mt-1 text-sm text-red-600'>
+                  {errors.questionnaireId.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
                 Texto de la Pregunta
               </label>
               <textarea
                 {...register('text')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
-                placeholder="Ej: ¿Cómo te sientes trabajando en equipo?"
+                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
+                placeholder='Ej: ¿Cómo te sientes trabajando en equipo?'
               />
               {errors.text && (
-                <p className="mt-1 text-sm text-red-600">{errors.text.message}</p>
+                <p className='mt-1 text-sm text-red-600'>
+                  {errors.text.message}
+                </p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className='grid grid-cols-2 gap-4'>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
                   Tipo de Pregunta
                 </label>
                 <select
                   {...register('type')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
                 >
-                  <option value={QuestionType.MULTIPLE_CHOICE}>Opción Múltiple</option>
+                  <option value={QuestionType.MULTIPLE_CHOICE}>
+                    Opción Múltiple
+                  </option>
                   <option value={QuestionType.SCALE}>Escala</option>
                   <option value={QuestionType.TEXT}>Texto Libre</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
                   Puntos
                 </label>
-                  <input
-                  type="number"
+                <input
+                  type='number'
                   {...register('points', { valueAsNumber: true })}
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
+                  min='0'
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
                 />
               </div>
             </div>
 
             {questionType === QuestionType.MULTIPLE_CHOICE && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className='block text-sm font-medium text-gray-700 mb-2'>
                   Opciones
                 </label>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   {options.map((option, index) => (
-                    <div key={index} className="flex gap-2">
+                    <div key={index} className='flex gap-2'>
                       <input
-                        type="text"
+                        type='text'
                         value={option}
                         onChange={(e) => updateOption(index, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
+                        className='flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
                         placeholder={`Opción ${index + 1}`}
                       />
                       {options.length > 1 && (
                         <Button
-                          type="button"
-                          variant="danger"
-                          size="sm"
+                          type='button'
+                          variant='danger'
+                          size='sm'
                           onClick={() => removeOption(index)}
                         >
                           ✕
@@ -271,7 +290,12 @@ export default function QuestionsPage() {
                       )}
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={addOption}>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={addOption}
+                  >
                     ➕ Agregar Opción
                   </Button>
                 </div>
@@ -279,25 +303,25 @@ export default function QuestionsPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
                 Orden
               </label>
               <input
-                type="number"
+                type='number'
                 {...register('order', { valueAsNumber: true })}
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
+                min='0'
+                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className='flex gap-3'>
               <Button
-                type="submit"
+                type='submit'
                 isLoading={createQuestion.isPending || updateQuestion.isPending}
               >
                 {editingId ? 'Guardar Cambios' : 'Crear Pregunta'}
               </Button>
-              <Button type="button" variant="outline" onClick={handleCancel}>
+              <Button type='button' variant='outline' onClick={handleCancel}>
                 Cancelar
               </Button>
             </div>
@@ -306,33 +330,35 @@ export default function QuestionsPage() {
       )}
 
       {selectedQuestionnaireId && (
-        <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            Filtrando por: <span className="font-medium">
+        <div className='mb-4'>
+          <p className='text-sm text-gray-600'>
+            Filtrando por:{' '}
+            <span className='font-medium'>
               {getQuestionnaireName(selectedQuestionnaireId)}
             </span>
           </p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className='grid grid-cols-1 gap-4'>
         {questions && questions.length === 0 ? (
-          <Card className="p-6 text-center">
-            <p className="text-gray-500">No hay preguntas creadas aún</p>
+          <Card className='p-6 text-center'>
+            <p className='text-gray-500'>No hay preguntas creadas aún</p>
           </Card>
         ) : (
           questions
             ?.sort((a, b) => a.order - b.order)
             .map((question) => (
-              <Card key={question._id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-medium text-gray-500">
+              <Card key={question._id} className='p-6'>
+                <div className='flex items-start justify-between'>
+                  <div className='flex-1'>
+                    <div className='flex items-center gap-3 mb-2'>
+                      <span className='text-sm font-medium text-gray-500'>
                         #{question.order}
                       </span>
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
-                        {question.type === QuestionType.MULTIPLE_CHOICE && 'Opción Múltiple'}
+                      <span className='px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800'>
+                        {question.type === QuestionType.MULTIPLE_CHOICE &&
+                          'Opción Múltiple'}
                         {question.type === QuestionType.SCALE && 'Escala'}
                         {question.type === QuestionType.TEXT && 'Texto Libre'}
                       </span>
@@ -345,44 +371,45 @@ export default function QuestionsPage() {
                       >
                         {question.isActive ? 'Activa' : 'Inactiva'}
                       </span>
-                      <span className="text-sm text-gray-500">
+                      <span className='text-sm text-gray-500'>
                         {question.points} puntos
                       </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>
                       {question.text}
                     </h3>
                     {question.options && question.options.length > 0 && (
-                      <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                      <ul className='list-disc list-inside text-sm text-gray-600 mt-2'>
                         {question.options.map((option, idx) => (
                           <li key={idx}>{option}</li>
                         ))}
                       </ul>
                     )}
-                    <p className="text-sm text-gray-500 mt-2">
-                      Cuestionario: {getQuestionnaireName(question.questionnaireId)}
+                    <p className='text-sm text-gray-500 mt-2'>
+                      Cuestionario:{' '}
+                      {getQuestionnaireName(question.questionnaireId)}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className='flex gap-2'>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant='outline'
+                      size='sm'
                       onClick={() => toggleActive.mutate(question._id)}
                       disabled={toggleActive.isPending}
                     >
                       {question.isActive ? 'Desactivar' : 'Activar'}
                     </Button>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant='outline'
+                      size='sm'
                       onClick={() => handleEdit(question)}
                       disabled={!!editingId || !!isCreating}
                     >
                       ✏️ Editar
                     </Button>
                     <Button
-                      variant="danger"
-                      size="sm"
+                      variant='danger'
+                      size='sm'
                       onClick={() => handleDelete(question._id)}
                       disabled={deleteQuestion.isPending}
                     >
@@ -397,4 +424,3 @@ export default function QuestionsPage() {
     </div>
   );
 }
-

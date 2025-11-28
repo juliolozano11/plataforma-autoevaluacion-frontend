@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useRegister } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { Input } from '@/components/ui/input';
+import { useRegister } from '@/hooks/use-auth';
+import { ApiErrorResponse, UserRole } from '@/types';
+import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { UserRole } from '@/types';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 const registerSchema = z.object({
   email: z
@@ -52,67 +52,72 @@ export default function RegisterPage() {
     setError(null);
     try {
       await register.mutateAsync(data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrar usuario');
+    } catch (err) {
+      const error = err as ApiErrorResponse;
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          'Error al registrar usuario'
+      );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12">
-      <Card className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12'>
+      <Card className='w-full max-w-md'>
+        <div className='text-center mb-6'>
+          <h1 className='text-3xl font-bold text-gray-900 mb-2'>
             Crear Cuenta
           </h1>
-          <p className="text-gray-600">
+          <p className='text-gray-600'>
             Plataforma de Autoevaluación - Universidad de Guayaquil
           </p>
         </div>
 
-        {error && <ErrorMessage message={error} className="mb-4" />}
+        {error && <ErrorMessage message={error} className='mb-4' />}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
+          <div className='grid grid-cols-2 gap-4'>
             <Input
-              label="Nombre"
-              type="text"
-              placeholder="Juan"
+              label='Nombre'
+              type='text'
+              placeholder='Juan'
               error={errors.firstName?.message}
               {...registerField('firstName')}
             />
 
             <Input
-              label="Apellido"
-              type="text"
-              placeholder="Pérez"
+              label='Apellido'
+              type='text'
+              placeholder='Pérez'
               error={errors.lastName?.message}
               {...registerField('lastName')}
             />
           </div>
 
           <Input
-            label="Correo Electrónico"
-            type="email"
-            placeholder="usuario@ug.edu.ec"
+            label='Correo Electrónico'
+            type='email'
+            placeholder='usuario@ug.edu.ec'
             error={errors.email?.message}
             {...registerField('email')}
           />
 
           <Input
-            label="Contraseña"
-            type="password"
-            placeholder="••••••••"
+            label='Contraseña'
+            type='password'
+            placeholder='••••••••'
             error={errors.password?.message}
             {...registerField('password')}
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className='block text-sm font-medium text-gray-700 mb-1'>
               Tipo de Usuario
             </label>
             <select
               {...registerField('role')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
+              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
             >
               <option value={UserRole.STUDENT}>Estudiante</option>
               <option value={UserRole.ADMIN}>Administrador</option>
@@ -122,26 +127,26 @@ export default function RegisterPage() {
           {selectedRole === UserRole.STUDENT && (
             <>
               <Input
-                label="Carrera"
-                type="text"
-                placeholder="Ingeniería en Sistemas"
+                label='Carrera'
+                type='text'
+                placeholder='Ingeniería en Sistemas'
                 error={errors.career?.message}
                 {...registerField('career')}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className='grid grid-cols-2 gap-4'>
                 <Input
-                  label="Curso"
-                  type="text"
-                  placeholder="8vo"
+                  label='Curso'
+                  type='text'
+                  placeholder='8vo'
                   error={errors.course?.message}
                   {...registerField('course')}
                 />
 
                 <Input
-                  label="Paralelo"
-                  type="text"
-                  placeholder="A"
+                  label='Paralelo'
+                  type='text'
+                  placeholder='A'
                   error={errors.parallel?.message}
                   {...registerField('parallel')}
                 />
@@ -150,8 +155,8 @@ export default function RegisterPage() {
           )}
 
           <Button
-            type="submit"
-            className="w-full"
+            type='submit'
+            className='w-full'
             isLoading={register.isPending}
             disabled={register.isPending}
           >
@@ -159,10 +164,10 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+        <div className='mt-6 text-center'>
+          <p className='text-sm text-gray-600'>
             ¿Ya tienes una cuenta?{' '}
-            <Link href="/auth/login" className="text-blue-600 hover:underline">
+            <Link href='/auth/login' className='text-blue-600 hover:underline'>
               Inicia sesión aquí
             </Link>
           </p>
@@ -171,4 +176,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

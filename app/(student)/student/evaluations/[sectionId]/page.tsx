@@ -1,16 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/ui/loading';
+import { Card } from '@/components/ui/card';
 import { ErrorMessage } from '@/components/ui/error-message';
-import { useSection } from '@/hooks/use-sections';
+import { Loading } from '@/components/ui/loading';
+import {
+  useCompleteEvaluation,
+  useCreateEvaluation,
+  useEvaluations,
+  useStartEvaluation,
+  useSubmitAnswer,
+} from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useQuestions } from '@/hooks/use-questions';
-import { useEvaluations, useCreateEvaluation, useStartEvaluation, useSubmitAnswer, useCompleteEvaluation } from '@/hooks/use-evaluations';
-import { QuestionType, EvaluationStatus } from '@/types';
+import { useSection } from '@/hooks/use-sections';
+import { EvaluationStatus, QuestionType } from '@/types';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function EvaluationPage() {
   const params = useParams();
@@ -68,7 +74,7 @@ export default function EvaluationPage() {
     }
   }, [evaluationId, questions, evaluations]);
 
-  const handleAnswerChange = (questionId: string, value: any) => {
+  const handleAnswerChange = (questionId: string, value: string | number) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: value,
@@ -133,16 +139,16 @@ export default function EvaluationPage() {
 
   if (sectionLoading || questionsLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loading size="lg" />
+      <div className='flex justify-center py-12'>
+        <Loading size='lg' />
       </div>
     );
   }
 
   if (!section || !questions || questions.length === 0) {
     return (
-      <div className="flex justify-center py-12">
-        <ErrorMessage message="No hay preguntas disponibles para esta evaluación" />
+      <div className='flex justify-center py-12'>
+        <ErrorMessage message='No hay preguntas disponibles para esta evaluación' />
       </div>
     );
   }
@@ -153,82 +159,89 @@ export default function EvaluationPage() {
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className='max-w-4xl mx-auto space-y-6'>
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{section.displayName}</h1>
-        <p className="mt-2 text-gray-600">{section.description}</p>
+        <h1 className='text-3xl font-bold text-gray-900'>
+          {section.displayName}
+        </h1>
+        <p className='mt-2 text-gray-600'>{section.description}</p>
       </div>
 
       {/* Barra de progreso */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">
+      <Card className='p-4'>
+        <div className='flex items-center justify-between mb-2'>
+          <span className='text-sm font-medium text-gray-700'>
             Pregunta {currentQuestionIndex + 1} de {questions.length}
           </span>
-          <span className="text-sm font-medium text-gray-700">
+          <span className='text-sm font-medium text-gray-700'>
             {Math.round(progress)}%
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className='w-full bg-gray-200 rounded-full h-2'>
           <div
-            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+            className='bg-indigo-600 h-2 rounded-full transition-all duration-300'
             style={{ width: `${progress}%` }}
           />
         </div>
       </Card>
 
       {/* Pregunta actual */}
-      <Card className="p-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
+      <Card className='p-6'>
+        <div className='mb-6'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-xl font-semibold text-gray-900'>
               {currentQuestion.text}
             </h2>
-            <span className="text-sm text-gray-500">
+            <span className='text-sm text-gray-500'>
               {currentQuestion.points} puntos
             </span>
           </div>
 
           {/* Renderizar input según tipo de pregunta */}
           {currentQuestion.type === QuestionType.MULTIPLE_CHOICE && (
-            <div className="space-y-3">
+            <div className='space-y-3'>
               {currentQuestion.options?.map((option, index) => (
                 <label
                   key={index}
-                  className="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                  className='flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors'
                 >
                   <input
-                    type="radio"
+                    type='radio'
                     name={`question-${currentQuestion._id}`}
                     value={option}
                     checked={currentAnswer === option}
-                    onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
-                    className="mr-3"
+                    onChange={(e) =>
+                      handleAnswerChange(currentQuestion._id, e.target.value)
+                    }
+                    className='mr-3'
                   />
-                  <span className="text-gray-900">{option}</span>
+                  <span className='text-gray-900'>{option}</span>
                 </label>
               ))}
             </div>
           )}
 
           {currentQuestion.type === QuestionType.SCALE && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">1 (Muy bajo)</span>
-                <span className="text-sm text-gray-600">10 (Muy alto)</span>
+            <div className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm text-gray-600'>1 (Muy bajo)</span>
+                <span className='text-sm text-gray-600'>10 (Muy alto)</span>
               </div>
               <input
-                type="range"
-                min="1"
-                max="10"
+                type='range'
+                min='1'
+                max='10'
                 value={currentAnswer || 5}
                 onChange={(e) =>
-                  handleAnswerChange(currentQuestion._id, parseInt(e.target.value))
+                  handleAnswerChange(
+                    currentQuestion._id,
+                    parseInt(e.target.value)
+                  )
                 }
-                className="w-full"
+                className='w-full'
               />
-              <div className="text-center">
-                <span className="text-2xl font-bold text-indigo-600">
+              <div className='text-center'>
+                <span className='text-2xl font-bold text-indigo-600'>
                   {currentAnswer || 5}
                 </span>
               </div>
@@ -238,18 +251,20 @@ export default function EvaluationPage() {
           {currentQuestion.type === QuestionType.TEXT && (
             <textarea
               value={currentAnswer || ''}
-              onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
+              onChange={(e) =>
+                handleAnswerChange(currentQuestion._id, e.target.value)
+              }
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white"
-              placeholder="Escribe tu respuesta aquí..."
+              className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
+              placeholder='Escribe tu respuesta aquí...'
             />
           )}
         </div>
 
         {/* Botones de navegación */}
-        <div className="flex justify-between mt-6">
+        <div className='flex justify-between mt-6'>
           <Button
-            variant="outline"
+            variant='outline'
             onClick={handlePrevious}
             disabled={currentQuestionIndex === 0}
           >
@@ -276,11 +291,11 @@ export default function EvaluationPage() {
       </Card>
 
       {/* Indicador de preguntas */}
-      <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">
+      <Card className='p-4'>
+        <h3 className='text-sm font-medium text-gray-700 mb-3'>
           Progreso de la evaluación
         </h3>
-        <div className="flex flex-wrap gap-2">
+        <div className='flex flex-wrap gap-2'>
           {questions.map((q, index) => {
             const isAnswered = answers[q._id] !== undefined;
             const isCurrent = index === currentQuestionIndex;
@@ -305,4 +320,3 @@ export default function EvaluationPage() {
     </div>
   );
 }
-

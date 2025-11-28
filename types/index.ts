@@ -148,3 +148,53 @@ export interface EvaluationConfig {
   updatedAt: string;
 }
 
+// Interfaces de reportes
+export interface ProgressPanel {
+  totalEvaluations: number;
+  completedEvaluations: number;
+  inProgressEvaluations: number;
+}
+
+export interface SectionDistribution {
+  sectionName: string;
+  levels: {
+    muy_bajo?: number;
+    bajo?: number;
+    intermedio?: number;
+    alto?: number;
+    muy_alto?: number;
+  };
+}
+
+export interface LevelsDistribution {
+  sections: SectionDistribution[];
+}
+
+export interface SectionResult {
+  sectionName: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  level: EvaluationLevel;
+}
+
+export interface IndividualReport {
+  evaluation: Evaluation;
+  sections: SectionResult[];
+  totalScore: number;
+  totalMaxScore: number;
+  overallLevel: EvaluationLevel;
+}
+
+// Tipos para respuestas de API
+export interface ApiError {
+  message: string;
+  statusCode?: number;
+}
+
+export interface ApiErrorResponse {
+  response?: {
+    data?: ApiError;
+  };
+  message?: string;
+}
