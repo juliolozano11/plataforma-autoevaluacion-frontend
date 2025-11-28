@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorMessage } from '@/components/ui/error-message';
@@ -14,11 +15,12 @@ import {
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useQuestions } from '@/hooks/use-questions';
 import { useSection } from '@/hooks/use-sections';
+import { cn } from '@/lib/utils/cn';
 import { EvaluationStatus, QuestionType } from '@/types';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-export default function EvaluationPage() {
+function EvaluationPageContent() {
   const params = useParams();
   const router = useRouter();
   const sectionId = params.sectionId as string;
@@ -27,65 +29,151 @@ export default function EvaluationPage() {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [evaluationId, setEvaluationId] = useState<string | null>(null);
 
-  const { data: section, isLoading: sectionLoading } = useSection(sectionId);
-  const { data: questionnaires, isLoading: questionnairesLoading } =
-    useActiveQuestionnaires(sectionId);
+  const {
+    data: section,
+    isLoading: sectionLoading,
+    error: sectionError,
+  } = useSection(sectionId);
+  const {
+    data: questionnaires,
+    isLoading: questionnairesLoading,
+    error: questionnairesError,
+  } = useActiveQuestionnaires(sectionId);
   const questionnaireId = questionnaires?.[0]?._id;
-  const { data: questions, isLoading: questionsLoading } =
-    useQuestions(questionnaireId);
-  const { data: evaluations } = useEvaluations(sectionId);
+  const {
+    data: questions,
+    isLoading: questionsLoading,
+    error: questionsError,
+  } = useQuestions(questionnaireId);
+  const { data: evaluations, error: evaluationsError } =
+    useEvaluations(sectionId);
   const createEvaluation = useCreateEvaluation();
   const startEvaluation = useStartEvaluation();
   const submitAnswer = useSubmitAnswer();
   const completeEvaluation = useCompleteEvaluation();
 
+  // Ajustar el índice si es necesario cuando cambian las preguntas
+  // ⚠️ IMPORTANTE: Este hook debe estar ANTES de cualquier return condicional
+  useEffect(() => {
+    if (questions && Array.isArray(questions) && questions.length > 0) {
+      const validIndex = Math.min(
+        Math.max(0, currentQuestionIndex),
+        questions.length - 1
+      );
+      if (currentQuestionIndex !== validIndex) {
+        setCurrentQuestionIndex(validIndex);
+      }
+    }
+  }, [questions, currentQuestionIndex]);
+
   // Buscar o crear evaluación
   useEffect(() => {
-    // No crear evaluación si la sección está bloqueada
-    if (section && !section.isActive) {
-      return;
-    }
-
-    // No crear evaluación si no hay cuestionarios
-    if (!questionnaires || questionnaires.length === 0) {
-      return;
-    }
-
-    const existingEvaluation = evaluations?.find((e) =>
-      typeof e.sectionId === 'object'
-        ? e.sectionId._id === sectionId
-        : e.sectionId === sectionId
-    );
-
-    if (existingEvaluation) {
-      setEvaluationId(existingEvaluation._id);
-      if (existingEvaluation.status === EvaluationStatus.IN_PROGRESS) {
-        // Cargar respuestas existentes si hay
+    try {
+      // No crear evaluación si la sección está bloqueada
+      if (section && !section.isActive) {
+        return;
       }
-    } else if (
-      evaluations &&
-      !createEvaluation.isPending &&
-      section?.isActive
-    ) {
-      // Crear nueva evaluación solo si la sección está activa
-      createEvaluation.mutate(
-        { sectionId },
-        {
-          onSuccess: (data) => {
-            setEvaluationId(data._id);
-          },
-          onError: (error) => {
-            console.error('Error al crear evaluación:', error);
-          },
+
+      // No crear evaluación si no hay cuestionarios
+      if (!questionnaires || questionnaires.length === 0) {
+        return;
+      }
+
+      // No hacer nada si aún no hay datos de evaluaciones
+      if (evaluations === undefined || evaluations === null) {
+        return;
+      }
+
+      // Validar que evaluations sea un array
+      // Si es un objeto (cuando se filtra por sectionId puede retornar un objeto), convertirlo a array
+      let evaluationsArray: any[] = [];
+      if (Array.isArray(evaluations)) {
+        evaluationsArray = evaluations;
+      } else if (typeof evaluations === 'object' && evaluations !== null) {
+        // Si es un objeto único, convertirlo a array
+        evaluationsArray = [evaluations];
+      } else {
+        // Si es string vacío u otro tipo, usar array vacío
+        evaluationsArray = [];
+      }
+
+      const existingEvaluation = evaluationsArray.find((e) => {
+        try {
+          const evalSectionId =
+            typeof e.sectionId === 'object' ? e.sectionId._id : e.sectionId;
+          return evalSectionId === sectionId;
+        } catch (err) {
+          console.error('Error al procesar evaluación:', err);
+          return false;
         }
-      );
+      });
+
+      if (existingEvaluation) {
+        setEvaluationId(existingEvaluation._id);
+        if (existingEvaluation.status === EvaluationStatus.IN_PROGRESS) {
+          // Cargar respuestas existentes si hay
+        }
+      } else if (
+        evaluationsArray.length === 0 &&
+        !createEvaluation.isPending &&
+        section?.isActive &&
+        questionnaires.length > 0
+      ) {
+        // Crear nueva evaluación solo si la sección está activa
+        createEvaluation.mutate(
+          { sectionId },
+          {
+            onSuccess: (data) => {
+              if (data?._id) {
+                setEvaluationId(data._id);
+              }
+            },
+            onError: (error) => {
+              console.error('Error al crear evaluación:', error);
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error en useEffect de evaluación:', error);
     }
   }, [evaluations, sectionId, section, questionnaires, createEvaluation]);
 
   // Iniciar evaluación cuando esté lista
   useEffect(() => {
-    if (evaluationId && questions && questions.length > 0) {
-      const evaluation = evaluations?.find((e) => e._id === evaluationId);
+    try {
+      if (
+        !evaluationId ||
+        !questions ||
+        questions.length === 0 ||
+        !evaluations
+      ) {
+        return;
+      }
+
+      // Validar que evaluations sea un array
+      let evaluationsArray: any[] = [];
+      if (Array.isArray(evaluations)) {
+        evaluationsArray = evaluations;
+      } else if (typeof evaluations === 'object' && evaluations !== null) {
+        evaluationsArray = [evaluations];
+      } else {
+        evaluationsArray = [];
+      }
+
+      if (evaluationsArray.length === 0) {
+        return;
+      }
+
+      const evaluation = evaluationsArray.find((e) => {
+        try {
+          return e?._id === evaluationId;
+        } catch (err) {
+          console.error('Error al buscar evaluación:', err);
+          return false;
+        }
+      });
+
       if (evaluation && evaluation.status === EvaluationStatus.PENDING) {
         startEvaluation.mutate(evaluationId, {
           onError: (error) => {
@@ -93,6 +181,8 @@ export default function EvaluationPage() {
           },
         });
       }
+    } catch (error) {
+      console.error('Error en useEffect de iniciar evaluación:', error);
     }
   }, [evaluationId, questions, evaluations, startEvaluation]);
 
@@ -138,29 +228,64 @@ export default function EvaluationPage() {
   };
 
   const handleComplete = async () => {
-    if (!evaluationId) return;
-
-    const currentQuestion = questions?.[currentQuestionIndex];
-    if (currentQuestion) {
-      const answer = answers[currentQuestion._id];
-      if (answer !== undefined && answer !== null && answer !== '') {
-        await submitAnswer.mutateAsync({
-          evaluationId,
-          answer: {
-            questionId: currentQuestion._id,
-            value: answer,
-          },
-        });
-      }
-    }
+    if (!evaluationId || !questions) return;
 
     try {
+      // Guardar todas las respuestas que no se hayan guardado aún
+      const answersToSave = questions
+        .filter((q) => {
+          const answer = answers[q._id];
+          return answer !== undefined && answer !== null && answer !== '';
+        })
+        .map((q) => ({
+          questionId: q._id,
+          value: answers[q._id],
+        }));
+
+      // Guardar todas las respuestas en paralelo
+      await Promise.all(
+        answersToSave.map((answer) =>
+          submitAnswer.mutateAsync({
+            evaluationId,
+            answer,
+          })
+        )
+      );
+
+      // Completar la evaluación después de guardar todas las respuestas
       await completeEvaluation.mutateAsync(evaluationId);
       router.push(`/student/reports/${evaluationId}`);
     } catch (error) {
       console.error('Error al completar evaluación:', error);
     }
   };
+
+  // Mostrar errores si existen
+  if (
+    sectionError ||
+    questionnairesError ||
+    questionsError ||
+    evaluationsError
+  ) {
+    return (
+      <div className='flex justify-center py-12'>
+        <Card className='p-6 max-w-md'>
+          <div className='text-center'>
+            <h2 className='text-xl font-semibold text-gray-900 mb-2'>
+              Error al cargar datos
+            </h2>
+            <p className='text-gray-600 mb-4'>
+              No se pudieron cargar los datos necesarios. Por favor, intenta
+              recargar la página.
+            </p>
+            <Button onClick={() => window.location.reload()} variant='outline'>
+              Recargar Página
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (sectionLoading || questionnairesLoading || questionsLoading) {
     return (
@@ -240,13 +365,6 @@ export default function EvaluationPage() {
     );
   }
 
-  // Ajustar el índice si es necesario
-  useEffect(() => {
-    if (currentQuestionIndex !== validQuestionIndex) {
-      setCurrentQuestionIndex(validQuestionIndex);
-    }
-  }, [currentQuestionIndex, validQuestionIndex]);
-
   const currentAnswer = answers[currentQuestion._id];
   const progress = ((validQuestionIndex + 1) / questions.length) * 100;
   const isLastQuestion = validQuestionIndex === questions.length - 1;
@@ -316,7 +434,7 @@ export default function EvaluationPage() {
 
           {currentQuestion.type === QuestionType.SCALE && (
             <div className='space-y-4'>
-              <div className='flex items-center justify-between'>
+              <div className='flex items-center justify-between mb-4'>
                 <span className='text-sm text-gray-600'>
                   {currentQuestion.minScale ?? 1} (Muy bajo)
                 </span>
@@ -324,35 +442,47 @@ export default function EvaluationPage() {
                   {currentQuestion.maxScale ?? 10} (Muy alto)
                 </span>
               </div>
-              <input
-                type='range'
-                min={currentQuestion.minScale ?? 1}
-                max={currentQuestion.maxScale ?? 10}
-                value={
-                  currentAnswer ||
-                  Math.round(
-                    ((currentQuestion.minScale ?? 1) +
-                      (currentQuestion.maxScale ?? 10)) /
-                      2
-                  )
-                }
-                onChange={(e) =>
-                  handleAnswerChange(
-                    currentQuestion._id,
-                    parseInt(e.target.value)
-                  )
-                }
-                className='w-full'
-              />
-              <div className='text-center'>
-                <span className='text-2xl font-bold text-indigo-600'>
-                  {currentAnswer ||
-                    Math.round(
-                      ((currentQuestion.minScale ?? 1) +
-                        (currentQuestion.maxScale ?? 10)) /
-                        2
-                    )}
-                </span>
+              <div className='flex items-center justify-between gap-2'>
+                {Array.from(
+                  {
+                    length:
+                      (currentQuestion.maxScale ?? 10) -
+                      (currentQuestion.minScale ?? 1) +
+                      1,
+                  },
+                  (_, i) => {
+                    const value = (currentQuestion.minScale ?? 1) + i;
+                    const isSelected = currentAnswer === value;
+                    return (
+                      <label
+                        key={value}
+                        className={cn(
+                          'flex-1 flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50',
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-gray-300'
+                        )}
+                      >
+                        <span className='text-sm text-gray-600 mb-2'>
+                          {value}
+                        </span>
+                        <input
+                          type='radio'
+                          name={`question-${currentQuestion._id}`}
+                          value={value}
+                          checked={isSelected}
+                          onChange={(e) =>
+                            handleAnswerChange(
+                              currentQuestion._id,
+                              parseInt(e.target.value)
+                            )
+                          }
+                          className='w-5 h-5 text-indigo-600 focus:ring-indigo-500'
+                        />
+                      </label>
+                    );
+                  }
+                )}
               </div>
             </div>
           )}
@@ -427,5 +557,13 @@ export default function EvaluationPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function EvaluationPage() {
+  return (
+    <ErrorBoundary>
+      <EvaluationPageContent />
+    </ErrorBoundary>
   );
 }

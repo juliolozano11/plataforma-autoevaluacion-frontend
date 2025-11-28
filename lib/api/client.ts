@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://plataforma-autoevaluacion-backend-production.up.railway.app/api';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -66,4 +68,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-
