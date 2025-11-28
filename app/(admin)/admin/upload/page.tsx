@@ -210,21 +210,24 @@ export default function UploadPage() {
                   <strong>text:</strong> Texto de la pregunta (requerido)
                 </li>
                 <li>
-                  <strong>type:</strong> Tipo: multiple_choice, scale o text
-                  (requerido)
+                  <strong>type:</strong> Siempre debe ser "scale" (todas las
+                  preguntas son tipo Likert)
                 </li>
                 <li>
-                  <strong>options:</strong> Opciones separadas por coma (solo
-                  para multiple_choice)
+                  <strong>minScale:</strong> Valor mínimo de la escala (default:
+                  1)
                 </li>
                 <li>
-                  <strong>correctAnswer:</strong> Respuesta correcta (opcional)
+                  <strong>maxScale:</strong> Valor máximo de la escala (default:
+                  10)
                 </li>
                 <li>
-                  <strong>points:</strong> Puntos (default: 1)
+                  <strong>points:</strong> Puntos que vale la pregunta (default:
+                  1)
                 </li>
                 <li>
-                  <strong>order:</strong> Orden (default: secuencial)
+                  <strong>order:</strong> Orden de la pregunta (default:
+                  secuencial)
                 </li>
               </ul>
             </div>

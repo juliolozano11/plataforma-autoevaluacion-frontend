@@ -102,6 +102,8 @@ export interface Question {
   type: QuestionType;
   options?: string[];
   correctAnswer?: any;
+  minScale?: number; // Valor mínimo de la escala para preguntas tipo scale
+  maxScale?: number; // Valor máximo de la escala para preguntas tipo scale
   points: number;
   order: number;
   isActive: boolean;

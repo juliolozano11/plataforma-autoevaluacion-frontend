@@ -224,14 +224,25 @@ export default function EvaluationPage() {
           {currentQuestion.type === QuestionType.SCALE && (
             <div className='space-y-4'>
               <div className='flex items-center justify-between'>
-                <span className='text-sm text-gray-600'>1 (Muy bajo)</span>
-                <span className='text-sm text-gray-600'>10 (Muy alto)</span>
+                <span className='text-sm text-gray-600'>
+                  {currentQuestion.minScale ?? 1} (Muy bajo)
+                </span>
+                <span className='text-sm text-gray-600'>
+                  {currentQuestion.maxScale ?? 10} (Muy alto)
+                </span>
               </div>
               <input
                 type='range'
-                min='1'
-                max='10'
-                value={currentAnswer || 5}
+                min={currentQuestion.minScale ?? 1}
+                max={currentQuestion.maxScale ?? 10}
+                value={
+                  currentAnswer ||
+                  Math.round(
+                    ((currentQuestion.minScale ?? 1) +
+                      (currentQuestion.maxScale ?? 10)) /
+                      2
+                  )
+                }
                 onChange={(e) =>
                   handleAnswerChange(
                     currentQuestion._id,
@@ -242,7 +253,12 @@ export default function EvaluationPage() {
               />
               <div className='text-center'>
                 <span className='text-2xl font-bold text-indigo-600'>
-                  {currentAnswer || 5}
+                  {currentAnswer ||
+                    Math.round(
+                      ((currentQuestion.minScale ?? 1) +
+                        (currentQuestion.maxScale ?? 10)) /
+                        2
+                    )}
                 </span>
               </div>
             </div>

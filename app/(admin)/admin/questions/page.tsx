@@ -19,15 +19,20 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-const questionSchema = z.object({
-  questionnaireId: z.string().min(1, 'Debes seleccionar un cuestionario'),
-  text: z.string().min(1, 'El texto de la pregunta es requerido'),
-  type: z.nativeEnum(QuestionType),
-  options: z.array(z.string()).optional(),
-  points: z.number().min(0),
-  order: z.number().min(0),
-  correctAnswer: z.any().optional(),
-});
+const questionSchema = z
+  .object({
+    questionnaireId: z.string().min(1, 'Debes seleccionar un cuestionario'),
+    text: z.string().min(1, 'El texto de la pregunta es requerido'),
+    type: z.nativeEnum(QuestionType),
+    points: z.number().min(0),
+    order: z.number().min(0),
+    minScale: z.number().min(0, 'El valor mínimo debe ser mayor o igual a 0'),
+    maxScale: z.number().min(1, 'El valor máximo debe ser mayor o igual a 1'),
+  })
+  .refine((data) => data.maxScale > data.minScale, {
+    message: 'El valor máximo debe ser mayor que el mínimo',
+    path: ['maxScale'],
+  });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
 
@@ -63,9 +68,11 @@ export default function QuestionsPage() {
     resolver: zodResolver(questionSchema),
     defaultValues: {
       questionnaireId: selectedQuestionnaireId,
-      type: QuestionType.MULTIPLE_CHOICE,
+      type: QuestionType.SCALE,
       points: 1,
       order: 0,
+      minScale: 1,
+      maxScale: 10,
     },
   });
 
@@ -82,11 +89,13 @@ export default function QuestionsPage() {
   const onSubmit = async (data: QuestionFormData) => {
     try {
       const questionData = {
-        ...data,
-        options:
-          questionType === QuestionType.MULTIPLE_CHOICE
-            ? options.filter((opt) => opt.trim() !== '')
-            : undefined,
+        text: data.text,
+        questionnaireId: data.questionnaireId,
+        type: QuestionType.SCALE, // Todas son tipo scale
+        points: data.points,
+        order: data.order,
+        minScale: data.minScale ?? 1,
+        maxScale: data.maxScale ?? 10,
       };
 
       if (editingId) {
@@ -116,6 +125,8 @@ export default function QuestionsPage() {
     setValue('points', question.points);
     setValue('order', question.order);
     setValue('correctAnswer', question.correctAnswer);
+    setValue('minScale', question.minScale ?? 1);
+    setValue('maxScale', question.maxScale ?? 10);
     if (question.options) {
       setOptions(question.options);
     } else {
@@ -241,13 +252,14 @@ export default function QuestionsPage() {
                 <select
                   {...register('type')}
                   className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
+                  defaultValue={QuestionType.SCALE}
+                  disabled
                 >
-                  <option value={QuestionType.MULTIPLE_CHOICE}>
-                    Opción Múltiple
-                  </option>
-                  <option value={QuestionType.SCALE}>Escala</option>
-                  <option value={QuestionType.TEXT}>Texto Libre</option>
+                  <option value={QuestionType.SCALE}>Escala de Likert</option>
                 </select>
+                <p className='mt-1 text-xs text-gray-500'>
+                  Todas las preguntas deben ser tipo escala de Likert
+                </p>
               </div>
 
               <div>
@@ -263,7 +275,44 @@ export default function QuestionsPage() {
               </div>
             </div>
 
-            {questionType === QuestionType.MULTIPLE_CHOICE && (
+            {/* Configuración de escala - REQUERIDA para todas las preguntas */}
+            <div className='grid grid-cols-2 gap-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
+                  Valor Mínimo de la Escala *
+                </label>
+                <input
+                  type='number'
+                  {...register('minScale', { valueAsNumber: true })}
+                  min='0'
+                  required
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
+                  placeholder='1'
+                />
+                <p className='mt-1 text-xs text-gray-500'>
+                  Valor mínimo que puede seleccionar el estudiante
+                </p>
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
+                  Valor Máximo de la Escala *
+                </label>
+                <input
+                  type='number'
+                  {...register('maxScale', { valueAsNumber: true })}
+                  min='1'
+                  required
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white'
+                  placeholder='10'
+                />
+                <p className='mt-1 text-xs text-gray-500'>
+                  Valor máximo que puede seleccionar el estudiante
+                </p>
+              </div>
+            </div>
+
+            {/* Ocultar opciones múltiples - no se usan */}
+            {false && questionType === QuestionType.MULTIPLE_CHOICE && (
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>
                   Opciones
@@ -357,11 +406,14 @@ export default function QuestionsPage() {
                         #{question.order}
                       </span>
                       <span className='px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800'>
-                        {question.type === QuestionType.MULTIPLE_CHOICE &&
-                          'Opción Múltiple'}
-                        {question.type === QuestionType.SCALE && 'Escala'}
-                        {question.type === QuestionType.TEXT && 'Texto Libre'}
+                        Escala de Likert
                       </span>
+                      {question.minScale !== undefined &&
+                        question.maxScale !== undefined && (
+                          <span className='text-xs text-gray-500'>
+                            ({question.minScale}-{question.maxScale})
+                          </span>
+                        )}
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${
                           question.isActive
@@ -378,13 +430,6 @@ export default function QuestionsPage() {
                     <h3 className='text-lg font-semibold text-gray-900 mb-2'>
                       {question.text}
                     </h3>
-                    {question.options && question.options.length > 0 && (
-                      <ul className='list-disc list-inside text-sm text-gray-600 mt-2'>
-                        {question.options.map((option, idx) => (
-                          <li key={idx}>{option}</li>
-                        ))}
-                      </ul>
-                    )}
                     <p className='text-sm text-gray-500 mt-2'>
                       Cuestionario:{' '}
                       {getQuestionnaireName(question.questionnaireId)}
