@@ -6,6 +6,7 @@ import { Loading } from '@/components/ui/loading';
 import { useLevelsDistribution, useProgressPanel } from '@/hooks/use-reports';
 import { useSections } from '@/hooks/use-sections';
 import { useStudents } from '@/hooks/use-users';
+import { SectionDistribution } from '@/types';
 import { useState } from 'react';
 
 export default function ReportsPage() {
@@ -102,17 +103,25 @@ export default function ReportsPage() {
           <Loading />
         ) : (
           <div className='space-y-4'>
-            {distribution?.sections?.map((sectionDist, index: number) => (
-              <div
-                key={index}
-                className='border border-gray-200 rounded-lg p-4'
-              >
-                <h3 className='font-medium text-gray-900 mb-3'>
-                  {sectionDist.sectionName || `Sección ${index + 1}`}
-                </h3>
-                <div className='grid grid-cols-5 gap-2'>
-                  {['muy_bajo', 'bajo', 'intermedio', 'alto', 'muy_alto'].map(
-                    (level) => (
+            {distribution?.sections?.map(
+              (sectionDist: SectionDistribution, index: number) => (
+                <div
+                  key={index}
+                  className='border border-gray-200 rounded-lg p-4'
+                >
+                  <h3 className='font-medium text-gray-900 mb-3'>
+                    {sectionDist.sectionName || `Sección ${index + 1}`}
+                  </h3>
+                  <div className='grid grid-cols-5 gap-2'>
+                    {(
+                      [
+                        'muy_bajo',
+                        'bajo',
+                        'intermedio',
+                        'alto',
+                        'muy_alto',
+                      ] as const
+                    ).map((level) => (
                       <div key={level} className='text-center'>
                         <p className='text-2xl font-bold text-gray-900'>
                           {sectionDist.levels?.[level] || 0}
@@ -121,11 +130,11 @@ export default function ReportsPage() {
                           {level.replace('_', ' ')}
                         </p>
                       </div>
-                    )
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         )}
       </Card>

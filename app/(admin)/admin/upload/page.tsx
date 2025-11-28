@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useQuestionnaires } from '@/hooks/use-questionnaires';
 import { useFormatInfo, useUploadQuestions } from '@/hooks/use-upload';
+import { ApiErrorResponse } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';

@@ -134,6 +134,12 @@ export interface Answer {
   createdAt: string;
 }
 
+// DTOs para envío de datos
+export interface SubmitAnswerDto {
+  questionId: string;
+  value: string | number;
+}
+
 // Interfaces de configuración
 export interface EvaluationConfig {
   _id: string;
