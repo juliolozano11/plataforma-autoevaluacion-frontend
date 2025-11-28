@@ -19,7 +19,7 @@ const questionSchema = z.object({
   text: z.string().min(1, 'El texto de la pregunta es requerido'),
   type: z.nativeEnum(QuestionType),
   options: z.array(z.string()).optional(),
-  points: z.number().min(0).default(1),
+  points: z.number().min(0),
   order: z.number().min(0),
   correctAnswer: z.any().optional(),
 });
