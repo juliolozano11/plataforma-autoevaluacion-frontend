@@ -1,34 +1,24 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
-import { Evaluation, EvaluationWithAnswers, SubmitAnswerDto } from '@/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Evaluation, SubmitAnswerDto } from '@/types';
 
 // Hook para obtener evaluaciones del usuario
 export const useEvaluations = (sectionId?: string) => {
   return useQuery({
     queryKey: ['evaluations', sectionId],
     queryFn: async (): Promise<Evaluation[]> => {
-      try {
-        const url = sectionId
-          ? `${API_ENDPOINTS.evaluations.list}?sectionId=${sectionId}`
-          : API_ENDPOINTS.evaluations.list;
-        const { data } = await apiClient.get(url);
-        // Asegurar que siempre retornamos un array
-        // Si el backend retorna un objeto único (cuando se filtra por sectionId), convertirlo a array
-        if (Array.isArray(data)) {
-          return data;
-        } else if (data && typeof data === 'object' && data !== null) {
-          // Si es un objeto único, convertirlo a array
-          return [data];
-        } else {
-          // Si es null, undefined, string vacío, etc., retornar array vacío
-          return [];
-        }
-      } catch (error) {
-        console.error('Error al obtener evaluaciones:', error);
-        return [];
-      }
+      const url = sectionId
+        ? `${API_ENDPOINTS.evaluations.list}?sectionId=${sectionId}`
+        : API_ENDPOINTS.evaluations.list;
+      const { data } = await apiClient.get(url);
+      return data;
     },
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false, // No refetch al reconectar
+    staleTime: 60000, // Considerar los datos frescos por 60 segundos (aumentado)
+    gcTime: 300000, // Mantener en cache por 5 minutos (antes cacheTime)
   });
 };
 
@@ -36,7 +26,7 @@ export const useEvaluations = (sectionId?: string) => {
 export const useEvaluation = (id: string) => {
   return useQuery({
     queryKey: ['evaluations', id],
-    queryFn: async (): Promise<EvaluationWithAnswers> => {
+    queryFn: async (): Promise<Evaluation> => {
       const { data } = await apiClient.get(API_ENDPOINTS.evaluations.byId(id));
       return data;
     },
@@ -49,15 +39,31 @@ export const useCreateEvaluation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (evaluationData: { sectionId: string }) => {
-      const { data } = await apiClient.post(
-        API_ENDPOINTS.evaluations.create,
-        evaluationData
-      );
+    mutationFn: async (evaluationData: { sectionId: string; questionnaireId?: string }) => {
+      const { data } = await apiClient.post(API_ENDPOINTS.evaluations.create, evaluationData);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
+    onSuccess: (data, variables) => {
+      // Actualizar el cache específico de la sección
+      queryClient.setQueryData(['evaluations', variables.sectionId], (old: any) => {
+        if (Array.isArray(old)) {
+          return [...old, data];
+        }
+        return [data];
+      });
+      
+      // También actualizar el cache general (sin sectionId) para que aparezca en la lista principal
+      queryClient.setQueryData(['evaluations'], (old: any) => {
+        if (Array.isArray(old)) {
+          // Verificar si ya existe para evitar duplicados
+          const exists = old.some((e: any) => e._id === data._id);
+          if (!exists) {
+            return [...old, data];
+          }
+          return old;
+        }
+        return [data];
+      });
     },
   });
 };
@@ -68,14 +74,19 @@ export const useStartEvaluation = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data } = await apiClient.post(
-        API_ENDPOINTS.evaluations.start(id)
-      );
+      const { data } = await apiClient.post(API_ENDPOINTS.evaluations.start(id));
       return data;
     },
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
-      queryClient.invalidateQueries({ queryKey: ['evaluations', id] });
+    onSuccess: (data, id) => {
+      // Actualizar directamente el cache en lugar de invalidar para evitar re-fetches
+      queryClient.setQueryData(['evaluations'], (old: any) => {
+        if (Array.isArray(old)) {
+          return old.map((e: any) => 
+            e._id === id ? { ...e, ...data } : e
+          );
+        }
+        return old;
+      });
     },
   });
 };
@@ -85,23 +96,19 @@ export const useSubmitAnswer = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      evaluationId,
-      answer,
-    }: {
-      evaluationId: string;
-      answer: SubmitAnswerDto;
-    }) => {
-      const { data } = await apiClient.post(
-        API_ENDPOINTS.evaluations.submitAnswer(evaluationId),
-        answer
-      );
+    mutationFn: async ({ evaluationId, answer }: { evaluationId: string; answer: SubmitAnswerDto }) => {
+      const { data } = await apiClient.post(API_ENDPOINTS.evaluations.submitAnswer(evaluationId), answer);
       return data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
-      queryClient.invalidateQueries({
-        queryKey: ['evaluations', variables.evaluationId],
+    onSuccess: (data, variables) => {
+      // Actualizar directamente el cache en lugar de invalidar para evitar re-fetches
+      queryClient.setQueryData(['evaluations'], (old: any) => {
+        if (Array.isArray(old)) {
+          return old.map((e: any) => 
+            e._id === variables.evaluationId ? { ...e, ...data } : e
+          );
+        }
+        return old;
       });
     },
   });
@@ -113,28 +120,8 @@ export const useCompleteEvaluation = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      try {
-        const { data } = await apiClient.post(
-          API_ENDPOINTS.evaluations.complete(id),
-          {} // Body vacío para POST
-        );
-        return data;
-      } catch (error) {
-        console.error('Error al completar evaluación:', error);
-        if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as {
-            response?: { status?: number; data?: any };
-          };
-          console.error('Status:', axiosError.response?.status);
-          console.error('Data:', axiosError.response?.data);
-          console.error(
-            'URL intentada:',
-            API_ENDPOINTS.evaluations.complete(id)
-          );
-          console.error('Base URL:', apiClient.defaults.baseURL);
-        }
-        throw error;
-      }
+      const { data } = await apiClient.post(API_ENDPOINTS.evaluations.complete(id));
+      return data;
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
@@ -142,3 +129,4 @@ export const useCompleteEvaluation = () => {
     },
   });
 };
+

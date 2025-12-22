@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Rutas públicas (no requieren autenticación)
-  const publicPaths = ['/auth/login', '/auth/register'];
+  const publicPaths = ['/auth/login'];
   const isPublicPath = publicPaths.includes(pathname);
 
   // Rutas de admin

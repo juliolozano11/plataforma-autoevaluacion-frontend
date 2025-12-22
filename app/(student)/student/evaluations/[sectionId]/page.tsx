@@ -1,6 +1,5 @@
 'use client';
 
-import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorMessage } from '@/components/ui/error-message';
@@ -8,20 +7,19 @@ import { Loading } from '@/components/ui/loading';
 import {
   useCompleteEvaluation,
   useCreateEvaluation,
-  useEvaluation,
   useEvaluations,
   useStartEvaluation,
   useSubmitAnswer,
 } from '@/hooks/use-evaluations';
+import { useQueryClient } from '@tanstack/react-query';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useQuestions } from '@/hooks/use-questions';
 import { useSection } from '@/hooks/use-sections';
-import { cn } from '@/lib/utils/cn';
 import { EvaluationStatus, QuestionType } from '@/types';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 
-function EvaluationPageContent() {
+export default function EvaluationPage() {
   const params = useParams();
   const router = useRouter();
   const sectionId = params.sectionId as string;
@@ -29,184 +27,204 @@ function EvaluationPageContent() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [evaluationId, setEvaluationId] = useState<string | null>(null);
+  
+  // Refs para evitar loops infinitos
+  const isCreatingEvaluation = useRef(false);
+  const isStartingEvaluation = useRef(false);
+  const lastEvaluationId = useRef<string | null>(null);
+  const lastExistingEvaluationId = useRef<string | null>(null);
 
-  const {
-    data: section,
-    isLoading: sectionLoading,
-    error: sectionError,
-  } = useSection(sectionId);
-  const {
-    data: questionnaires,
-    isLoading: questionnairesLoading,
-    error: questionnairesError,
-  } = useActiveQuestionnaires(sectionId);
+  const queryClient = useQueryClient();
+  const { data: section, isLoading: sectionLoading } = useSection(sectionId);
+  const { data: questionnaires, isLoading: questionnairesLoading } =
+    useActiveQuestionnaires(sectionId);
   const questionnaireId = questionnaires?.[0]?._id;
-  const {
-    data: questions,
-    isLoading: questionsLoading,
-    error: questionsError,
-  } = useQuestions(questionnaireId);
-  const { data: evaluations, error: evaluationsError } =
-    useEvaluations(sectionId);
+  const { data: questions, isLoading: questionsLoading } =
+    useQuestions(questionnaireId);
+  const { data: evaluations } = useEvaluations(sectionId);
   const createEvaluation = useCreateEvaluation();
   const startEvaluation = useStartEvaluation();
   const submitAnswer = useSubmitAnswer();
   const completeEvaluation = useCompleteEvaluation();
 
-  // Cargar evaluación con respuestas si existe
-  const { data: evaluationWithAnswers } = useEvaluation(evaluationId || '');
+  // Memoizar el array de evaluaciones para evitar re-renders innecesarios
+  const evaluationsArray = useMemo(() => {
+    return Array.isArray(evaluations) ? evaluations : [];
+  }, [evaluations]);
 
-  // Cargar respuestas existentes cuando la evaluación está en progreso
+  // Memoizar la evaluación existente para esta sección y cuestionario
+  const existingEvaluation = useMemo(() => {
+    if (!questionnaireId) return undefined;
+    
+    return evaluationsArray.find((e) => {
+      const evalSectionId = typeof e.sectionId === 'object' 
+        ? e.sectionId._id 
+        : e.sectionId;
+      const evalQuestionnaireId = typeof e.questionnaireId === 'object'
+        ? e.questionnaireId._id
+        : e.questionnaireId;
+      
+      // Buscar por sección Y cuestionario
+      return String(evalSectionId) === String(sectionId) &&
+             String(evalQuestionnaireId) === String(questionnaireId);
+    });
+  }, [evaluationsArray, sectionId, questionnaireId]);
+
+  // Memoizar solo el ID de la evaluación existente para usar en dependencias
+  // Asegurar que siempre sea string o null, nunca undefined
+  const existingEvaluationId = useMemo(() => {
+    const id = existingEvaluation?._id;
+    return id ? String(id) : null;
+  }, [existingEvaluation?._id ?? null]); // Usar null en lugar de undefined
+
+  // Memoizar questionnaireId para evitar cambios innecesarios
+  const memoizedQuestionnaireId = useMemo(() => {
+    return questionnaireId ? String(questionnaireId) : null;
+  }, [questionnaireId]);
+
+  // Buscar o crear evaluación - solo cuando cambian los datos necesarios
   useEffect(() => {
+    // No crear evaluación si la sección está bloqueada
+    if (section && !section.isActive) {
+      return;
+    }
+
+    // No crear evaluación si no hay cuestionarios o questionnaireId
+    if (!questionnaires || questionnaires.length === 0 || !memoizedQuestionnaireId) {
+      return;
+    }
+
+    // Si ya tenemos un evaluationId establecido y existe la evaluación, no hacer nada
+    if (evaluationId && existingEvaluation && existingEvaluation._id === evaluationId) {
+      lastExistingEvaluationId.current = existingEvaluation._id;
+      return;
+    }
+
+    // Si encontramos una evaluación existente, establecer el ID
+    if (existingEvaluation) {
+      // Solo actualizar si el ID cambió
+      const evalId = existingEvaluation._id;
+      if (lastExistingEvaluationId.current !== evalId) {
+        setEvaluationId(evalId);
+        lastEvaluationId.current = evalId;
+        lastExistingEvaluationId.current = evalId;
+      }
+      return; // Salir temprano si encontramos una evaluación
+    }
+
+    // Si no hay evaluación existente pero antes había una, resetear el ref
+    if (!existingEvaluation && lastExistingEvaluationId.current) {
+      lastExistingEvaluationId.current = null;
+    }
+
+    // Solo crear si no hay evaluación existente y no estamos creando una
     if (
-      evaluationWithAnswers?.answers &&
-      Array.isArray(evaluationWithAnswers.answers)
+      !existingEvaluation &&
+      !isCreatingEvaluation.current &&
+      !createEvaluation.isPending &&
+      section?.isActive &&
+      memoizedQuestionnaireId
     ) {
-      const loadedAnswers: Record<string, any> = {};
-      evaluationWithAnswers.answers.forEach((answer: any) => {
-        const questionId =
-          typeof answer.questionId === 'object'
-            ? answer.questionId._id
-            : answer.questionId;
-        if (questionId) {
-          loadedAnswers[questionId] = answer.value;
-        }
-      });
-      setAnswers(loadedAnswers);
-    }
-  }, [evaluationWithAnswers]);
-
-  // Ajustar el índice si es necesario cuando cambian las preguntas
-  // ⚠️ IMPORTANTE: Este hook debe estar ANTES de cualquier return condicional
-  useEffect(() => {
-    if (questions && Array.isArray(questions) && questions.length > 0) {
-      const validIndex = Math.min(
-        Math.max(0, currentQuestionIndex),
-        questions.length - 1
-      );
-      if (currentQuestionIndex !== validIndex) {
-        setCurrentQuestionIndex(validIndex);
-      }
-    }
-  }, [questions, currentQuestionIndex]);
-
-  // Buscar o crear evaluación
-  useEffect(() => {
-    try {
-      // No crear evaluación si la sección está bloqueada
-      if (section && !section.isActive) {
-        return;
-      }
-
-      // No crear evaluación si no hay cuestionarios
-      if (!questionnaires || questionnaires.length === 0) {
-        return;
-      }
-
-      // No hacer nada si aún no hay datos de evaluaciones
-      if (evaluations === undefined || evaluations === null) {
-        return;
-      }
-
-      // Validar que evaluations sea un array
-      // Si es un objeto (cuando se filtra por sectionId puede retornar un objeto), convertirlo a array
-      let evaluationsArray: any[] = [];
-      if (Array.isArray(evaluations)) {
-        evaluationsArray = evaluations;
-      } else if (typeof evaluations === 'object' && evaluations !== null) {
-        // Si es un objeto único, convertirlo a array
-        evaluationsArray = [evaluations];
-      } else {
-        // Si es string vacío u otro tipo, usar array vacío
-        evaluationsArray = [];
-      }
-
-      const existingEvaluation = evaluationsArray.find((e) => {
-        try {
-          const evalSectionId =
-            typeof e.sectionId === 'object' ? e.sectionId._id : e.sectionId;
-          return evalSectionId === sectionId;
-        } catch (err) {
-          console.error('Error al procesar evaluación:', err);
-          return false;
-        }
-      });
-
-      if (existingEvaluation) {
-        setEvaluationId(existingEvaluation._id);
-        // No crear nueva evaluación si ya existe
-      } else if (
-        evaluationsArray.length === 0 &&
-        !createEvaluation.isPending &&
-        section?.isActive &&
-        questionnaires.length > 0
-      ) {
-        // Crear nueva evaluación solo si la sección está activa
-        createEvaluation.mutate(
-          { sectionId },
-          {
-            onSuccess: (data) => {
-              if (data?._id) {
-                setEvaluationId(data._id);
+      // Crear nueva evaluación solo si la sección está activa y no estamos ya creando una
+      isCreatingEvaluation.current = true;
+      createEvaluation.mutate(
+        { sectionId, questionnaireId: memoizedQuestionnaireId },
+        {
+          onSuccess: (data) => {
+            setEvaluationId(data._id);
+            lastEvaluationId.current = data._id;
+            isCreatingEvaluation.current = false;
+            // Actualizar directamente el cache en lugar de invalidar para evitar re-fetch
+            queryClient.setQueryData(['evaluations', sectionId], (old: any) => {
+              if (Array.isArray(old)) {
+                return [...old, data];
               }
-            },
-            onError: (error) => {
+              return [data];
+            });
+          },
+          onError: (error: any) => {
+            // Si el error es 409 (Conflict), significa que ya existe una evaluación
+            // Usar refetch en lugar de invalidate para tener más control
+            if (error?.response?.status === 409) {
+              console.log('[DEBUG] Evaluación ya existe, recargando evaluaciones...');
+              // Refetch solo cuando sea necesario, no invalidar (que causa re-renders)
+              queryClient.refetchQueries({ 
+                queryKey: ['evaluations', sectionId],
+                exact: true 
+              });
+            } else {
               console.error('Error al crear evaluación:', error);
-            },
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Error en useEffect de evaluación:', error);
+            }
+            isCreatingEvaluation.current = false;
+          },
+        }
+      );
     }
-  }, [evaluations, sectionId, section, questionnaires, createEvaluation]);
+  }, [
+    existingEvaluationId,
+    sectionId,
+    memoizedQuestionnaireId,
+    Boolean(section?.isActive),
+    questionnaires?.length ?? 0,
+    Boolean(createEvaluation.isPending),
+    evaluationId,
+  ]);
+
+  // Memoizar la evaluación actual por ID
+  const currentEvaluation = useMemo(() => {
+    return evaluationsArray.find((e) => e._id === evaluationId);
+  }, [evaluationsArray, evaluationId]);
+
+  // Memoizar el status de la evaluación actual para evitar re-renders
+  const currentEvaluationStatus = useMemo(() => {
+    return currentEvaluation?.status;
+  }, [currentEvaluation?.status]);
 
   // Iniciar evaluación cuando esté lista
   useEffect(() => {
-    try {
-      if (
-        !evaluationId ||
-        !questions ||
-        questions.length === 0 ||
-        !evaluations
-      ) {
-        return;
-      }
-
-      // Validar que evaluations sea un array
-      let evaluationsArray: any[] = [];
-      if (Array.isArray(evaluations)) {
-        evaluationsArray = evaluations;
-      } else if (typeof evaluations === 'object' && evaluations !== null) {
-        evaluationsArray = [evaluations];
-      } else {
-        evaluationsArray = [];
-      }
-
-      if (evaluationsArray.length === 0) {
-        return;
-      }
-
-      const evaluation = evaluationsArray.find((e) => {
-        try {
-          return e?._id === evaluationId;
-        } catch (err) {
-          console.error('Error al buscar evaluación:', err);
-          return false;
-        }
-      });
-
-      if (evaluation && evaluation.status === EvaluationStatus.PENDING) {
-        startEvaluation.mutate(evaluationId, {
-          onError: (error) => {
-            console.error('Error al iniciar evaluación:', error);
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error en useEffect de iniciar evaluación:', error);
+    if (!evaluationId || !questions || questions.length === 0) {
+      return;
     }
-  }, [evaluationId, questions, evaluations, startEvaluation]);
+
+    // Evitar iniciar múltiples veces
+    if (isStartingEvaluation.current || startEvaluation.isPending) {
+      return;
+    }
+
+    if (currentEvaluationStatus === EvaluationStatus.PENDING) {
+      isStartingEvaluation.current = true;
+      startEvaluation.mutate(evaluationId, {
+        onSuccess: (data) => {
+          isStartingEvaluation.current = false;
+          // Actualizar directamente el cache en lugar de invalidar
+          queryClient.setQueryData(['evaluations', sectionId], (old: any) => {
+            if (Array.isArray(old)) {
+              return old.map((e: any) => 
+                e._id === evaluationId ? { ...e, ...data } : e
+              );
+            }
+            return old;
+          });
+        },
+        onError: (error) => {
+          console.error('Error al iniciar evaluación:', error);
+          isStartingEvaluation.current = false;
+        },
+      });
+    }
+  }, [evaluationId, questions?.length, currentEvaluationStatus, startEvaluation.isPending]);
+
+  // Validar que el índice esté dentro del rango (debe estar antes de los returns)
+  const validQuestionIndex = questions
+    ? Math.min(Math.max(0, currentQuestionIndex), questions.length - 1)
+    : 0;
+
+  // Ajustar el índice solo cuando cambia la longitud de las preguntas (evitar loop infinito)
+  useEffect(() => {
+    if (questions && questions.length > 0 && currentQuestionIndex >= questions.length) {
+      setCurrentQuestionIndex(questions.length - 1);
+    }
+  }, [questions?.length, currentQuestionIndex]); // Solo cuando cambia la longitud de questions
 
   const handleAnswerChange = (questionId: string, value: string | number) => {
     setAnswers((prev) => ({
@@ -250,64 +268,41 @@ function EvaluationPageContent() {
   };
 
   const handleComplete = async () => {
-    if (!evaluationId || !questions) return;
+    if (!evaluationId) {
+      console.error('[DEBUG] No hay evaluationId para completar');
+      return;
+    }
+
+    console.log('[DEBUG] Completando evaluación:', {
+      evaluationId,
+      sectionId,
+      currentQuestionIndex,
+      totalQuestions: questions?.length
+    });
+
+    const currentQuestion = questions?.[currentQuestionIndex];
+    if (currentQuestion) {
+      const answer = answers[currentQuestion._id];
+      if (answer !== undefined && answer !== null && answer !== '') {
+        console.log('[DEBUG] Guardando última respuesta antes de completar');
+        await submitAnswer.mutateAsync({
+          evaluationId,
+          answer: {
+            questionId: currentQuestion._id,
+            value: answer,
+          },
+        });
+      }
+    }
 
     try {
-      // Guardar todas las respuestas que no se hayan guardado aún
-      const answersToSave = questions
-        .filter((q) => {
-          const answer = answers[q._id];
-          return answer !== undefined && answer !== null && answer !== '';
-        })
-        .map((q) => ({
-          questionId: q._id,
-          value: answers[q._id],
-        }));
-
-      // Guardar todas las respuestas en paralelo
-      await Promise.all(
-        answersToSave.map((answer) =>
-          submitAnswer.mutateAsync({
-            evaluationId,
-            answer,
-          })
-        )
-      );
-
-      // Completar la evaluación después de guardar todas las respuestas
+      console.log('[DEBUG] Llamando a completeEvaluation con ID:', evaluationId);
       await completeEvaluation.mutateAsync(evaluationId);
       router.push(`/student/reports/${evaluationId}`);
     } catch (error) {
       console.error('Error al completar evaluación:', error);
     }
   };
-
-  // Mostrar errores si existen
-  if (
-    sectionError ||
-    questionnairesError ||
-    questionsError ||
-    evaluationsError
-  ) {
-    return (
-      <div className='flex justify-center py-12'>
-        <Card className='p-6 max-w-md'>
-          <div className='text-center'>
-            <h2 className='text-xl font-semibold text-gray-900 mb-2'>
-              Error al cargar datos
-            </h2>
-            <p className='text-gray-600 mb-4'>
-              No se pudieron cargar los datos necesarios. Por favor, intenta
-              recargar la página.
-            </p>
-            <Button onClick={() => window.location.reload()} variant='outline'>
-              Recargar Página
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   if (sectionLoading || questionnairesLoading || questionsLoading) {
     return (
@@ -372,32 +367,29 @@ function EvaluationPageContent() {
     );
   }
 
-  // Validar que el índice esté dentro del rango
-  const validQuestionIndex = Math.min(
-    Math.max(0, currentQuestionIndex),
-    questions.length - 1
-  );
-  const currentQuestion = questions[validQuestionIndex];
-
-  if (!currentQuestion) {
-    return (
-      <div className='flex justify-center py-12'>
-        <Loading size='lg' />
-      </div>
-    );
-  }
+  // Obtener la pregunta actual (después de validar que questions existe)
+  const currentQuestion = questions?.[validQuestionIndex];
 
   const currentAnswer = answers[currentQuestion._id];
   const progress = ((validQuestionIndex + 1) / questions.length) * 100;
   const isLastQuestion = validQuestionIndex === questions.length - 1;
 
+  // Obtener el cuestionario actual
+  const currentQuestionnaire = questionnaires?.find((q) => {
+    const qId = typeof q._id === 'string' ? q._id : String(q._id);
+    const evalQId = typeof questionnaireId === 'string' ? questionnaireId : String(questionnaireId);
+    return qId === evalQId;
+  }) || questionnaires?.[0];
+
   return (
     <div className='max-w-4xl mx-auto space-y-6'>
       <div>
         <h1 className='text-3xl font-bold text-gray-900'>
-          {section.displayName}
+          {currentQuestionnaire?.title || 'Cuestionario'}
         </h1>
-        <p className='mt-2 text-gray-600'>{section.description}</p>
+        <p className='mt-2 text-gray-600'>
+          <span className='font-medium'>Tipo:</span> {section.displayName}
+        </p>
       </div>
 
       {/* Barra de progreso */}
@@ -456,7 +448,7 @@ function EvaluationPageContent() {
 
           {currentQuestion.type === QuestionType.SCALE && (
             <div className='space-y-4'>
-              <div className='flex items-center justify-between mb-4'>
+              <div className='flex items-center justify-between'>
                 <span className='text-sm text-gray-600'>
                   {currentQuestion.minScale ?? 1} (Muy bajo)
                 </span>
@@ -464,47 +456,35 @@ function EvaluationPageContent() {
                   {currentQuestion.maxScale ?? 10} (Muy alto)
                 </span>
               </div>
-              <div className='flex items-center justify-between gap-2'>
-                {Array.from(
-                  {
-                    length:
-                      (currentQuestion.maxScale ?? 10) -
-                      (currentQuestion.minScale ?? 1) +
-                      1,
-                  },
-                  (_, i) => {
-                    const value = (currentQuestion.minScale ?? 1) + i;
-                    const isSelected = currentAnswer === value;
-                    return (
-                      <label
-                        key={value}
-                        className={cn(
-                          'flex-1 flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50',
-                          isSelected
-                            ? 'border-indigo-500 bg-indigo-50'
-                            : 'border-gray-300'
-                        )}
-                      >
-                        <span className='text-sm text-gray-600 mb-2'>
-                          {value}
-                        </span>
-                        <input
-                          type='radio'
-                          name={`question-${currentQuestion._id}`}
-                          value={value}
-                          checked={isSelected}
-                          onChange={(e) =>
-                            handleAnswerChange(
-                              currentQuestion._id,
-                              parseInt(e.target.value)
-                            )
-                          }
-                          className='w-5 h-5 text-indigo-600 focus:ring-indigo-500'
-                        />
-                      </label>
-                    );
-                  }
-                )}
+              <input
+                type='range'
+                min={currentQuestion.minScale ?? 1}
+                max={currentQuestion.maxScale ?? 10}
+                value={
+                  currentAnswer ||
+                  Math.round(
+                    ((currentQuestion.minScale ?? 1) +
+                      (currentQuestion.maxScale ?? 10)) /
+                      2
+                  )
+                }
+                onChange={(e) =>
+                  handleAnswerChange(
+                    currentQuestion._id,
+                    parseInt(e.target.value)
+                  )
+                }
+                className='w-full'
+              />
+              <div className='text-center'>
+                <span className='text-2xl font-bold text-indigo-600'>
+                  {currentAnswer ||
+                    Math.round(
+                      ((currentQuestion.minScale ?? 1) +
+                        (currentQuestion.maxScale ?? 10)) /
+                        2
+                    )}
+                </span>
               </div>
             </div>
           )}
@@ -579,13 +559,5 @@ function EvaluationPageContent() {
         </div>
       </Card>
     </div>
-  );
-}
-
-export default function EvaluationPage() {
-  return (
-    <ErrorBoundary>
-      <EvaluationPageContent />
-    </ErrorBoundary>
   );
 }

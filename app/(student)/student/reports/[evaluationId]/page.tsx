@@ -75,17 +75,23 @@ export default function IndividualReportPage() {
               Puntuación Total
             </p>
             <p className='text-3xl font-bold text-gray-900 mt-2'>
-              {evaluation.totalScore || 0} / {evaluation.maxScore || 0}
+              {evaluation.totalScore !== undefined && evaluation.totalScore !== null
+                ? Number(evaluation.totalScore).toFixed(2)
+                : '0.00'}{' '}
+              /{' '}
+              {evaluation.maxScore !== undefined && evaluation.maxScore !== null
+                ? Number(evaluation.maxScore).toFixed(2)
+                : '0.00'}
             </p>
           </div>
           <div>
             <p className='text-sm font-medium text-gray-500'>Porcentaje</p>
             <p className='text-3xl font-bold text-gray-900 mt-2'>
               {evaluation.maxScore && evaluation.totalScore
-                ? Math.round(
+                ? (
                     (evaluation.totalScore / evaluation.maxScore) * 100
-                  )
-                : 0}
+                  ).toFixed(2)
+                : '0.00'}
               %
             </p>
           </div>
@@ -133,19 +139,24 @@ export default function IndividualReportPage() {
                     <div>
                       <p className='text-sm text-gray-500'>Puntuación</p>
                       <p className='text-xl font-semibold text-gray-900'>
-                        {sectionResult.score || 0} /{' '}
-                        {sectionResult.maxScore || 0}
+                        {sectionResult.score !== undefined && sectionResult.score !== null
+                          ? Number(sectionResult.score).toFixed(2)
+                          : '0.00'}{' '}
+                        /{' '}
+                        {sectionResult.maxScore !== undefined && sectionResult.maxScore !== null
+                          ? Number(sectionResult.maxScore).toFixed(2)
+                          : '0.00'}
                       </p>
                     </div>
                     <div>
                       <p className='text-sm text-gray-500'>Porcentaje</p>
                       <p className='text-xl font-semibold text-gray-900'>
                         {sectionResult.maxScore && sectionResult.score
-                          ? Math.round(
+                          ? (
                               (sectionResult.score / sectionResult.maxScore) *
                                 100
-                            )
-                          : 0}
+                            ).toFixed(2)
+                          : '0.00'}
                         %
                       </p>
                     </div>

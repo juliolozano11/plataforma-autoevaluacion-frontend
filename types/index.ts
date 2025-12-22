@@ -83,6 +83,16 @@ export interface Section {
   updatedAt: string;
 }
 
+// Interfaces de carrera
+export interface Career {
+  _id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Interfaces de cuestionario
 export interface Questionnaire {
   _id: string;
@@ -116,6 +126,7 @@ export interface Evaluation {
   _id: string;
   userId: string | User;
   sectionId: string | Section;
+  questionnaireId?: string | Questionnaire;
   status: EvaluationStatus;
   totalScore?: number;
   maxScore?: number;
@@ -124,10 +135,6 @@ export interface Evaluation {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface EvaluationWithAnswers extends Evaluation {
-  answers?: Answer[];
 }
 
 // Interfaces de respuesta
@@ -165,6 +172,25 @@ export interface ProgressPanel {
   totalEvaluations: number;
   completedEvaluations: number;
   inProgressEvaluations: number;
+  sections?: Array<{
+    section: {
+      id: string;
+      name: string;
+      displayName: string;
+    };
+    totalStudents: number;
+    completed: number;
+    inProgress: number;
+    pending: number;
+    completionRate: string;
+    levelsDistribution: {
+      muy_bajo: number;
+      bajo: number;
+      intermedio: number;
+      alto: number;
+      muy_alto: number;
+    };
+  }>;
 }
 
 export interface SectionDistribution {

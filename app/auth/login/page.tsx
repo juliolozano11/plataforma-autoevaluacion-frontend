@@ -94,13 +94,7 @@ export default function LoginPage() {
 
         <div className='mt-6 text-center'>
           <p className='text-sm text-gray-600'>
-            ¿No tienes una cuenta?{' '}
-            <Link
-              href='/auth/register'
-              className='text-blue-600 hover:underline'
-            >
-              Regístrate aquí
-            </Link>
+            Contacta al administrador para obtener una cuenta
           </p>
         </div>
       </Card>

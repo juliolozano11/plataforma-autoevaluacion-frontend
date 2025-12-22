@@ -7,17 +7,7 @@ import { useLevelsDistribution, useProgressPanel } from '@/hooks/use-reports';
 import { useSections } from '@/hooks/use-sections';
 import { useStudents } from '@/hooks/use-users';
 import { SectionDistribution } from '@/types';
-import { useMemo, useState } from 'react';
-
-type ExtendedSectionDistribution = SectionDistribution & {
-  section?: {
-    id?: string;
-    name?: string;
-    displayName?: string;
-  };
-  distribution?: SectionDistribution['levels'];
-  total?: number;
-};
+import { useState } from 'react';
 
 export default function ReportsPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
@@ -46,45 +36,6 @@ export default function ReportsPage() {
         .filter(Boolean) || []
     )
   );
-
-  const progressPanels = useMemo(() => {
-    if (Array.isArray(progress)) {
-      return progress.filter(Boolean);
-    }
-    return [];
-  }, [progress]);
-
-  const aggregatedProgress = useMemo(
-    () =>
-      progressPanels.reduce(
-        (acc, panel) => {
-          const totalSectionEvaluations =
-            (panel?.completed || 0) +
-            (panel?.inProgress || 0) +
-            (panel?.pending || 0);
-          return {
-            totalEvaluations: acc.totalEvaluations + totalSectionEvaluations,
-            completedEvaluations:
-              acc.completedEvaluations + (panel?.completed || 0),
-            inProgressEvaluations:
-              acc.inProgressEvaluations + (panel?.inProgress || 0),
-          };
-        },
-        {
-          totalEvaluations: 0,
-          completedEvaluations: 0,
-          inProgressEvaluations: 0,
-        }
-      ),
-    [progressPanels]
-  );
-
-  const levelsDistributionData = useMemo<ExtendedSectionDistribution[]>(() => {
-    if (Array.isArray(distribution)) {
-      return distribution as ExtendedSectionDistribution[];
-    }
-    return [];
-  }, [distribution]);
 
   return (
     <div className='space-y-6'>
@@ -119,28 +70,43 @@ export default function ReportsPage() {
 
         {progressLoading ? (
           <Loading />
-        ) : progressPanels.length === 0 ? (
-          <p className='text-gray-500 text-center'>
-            No hay datos de evaluaciones para mostrar.
-          </p>
         ) : (
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
             <div className='text-center p-4 bg-blue-50 rounded-lg'>
               <p className='text-sm text-gray-600'>Total de Evaluaciones</p>
               <p className='text-3xl font-bold text-gray-900 mt-2'>
-                {aggregatedProgress.totalEvaluations}
+                {Array.isArray(progress)
+                  ? progress.reduce(
+                      (sum, item) =>
+                        sum +
+                        (item.completed || 0) +
+                        (item.inProgress || 0) +
+                        (item.pending || 0),
+                      0
+                    )
+                  : progress?.totalEvaluations || 0}
               </p>
             </div>
             <div className='text-center p-4 bg-green-50 rounded-lg'>
               <p className='text-sm text-gray-600'>Completadas</p>
               <p className='text-3xl font-bold text-gray-900 mt-2'>
-                {aggregatedProgress.completedEvaluations}
+                {Array.isArray(progress)
+                  ? progress.reduce(
+                      (sum, item) => sum + (item.completed || 0),
+                      0
+                    )
+                  : progress?.completedEvaluations || 0}
               </p>
             </div>
             <div className='text-center p-4 bg-yellow-50 rounded-lg'>
               <p className='text-sm text-gray-600'>En Progreso</p>
               <p className='text-3xl font-bold text-gray-900 mt-2'>
-                {aggregatedProgress.inProgressEvaluations}
+                {Array.isArray(progress)
+                  ? progress.reduce(
+                      (sum, item) => sum + (item.inProgress || 0),
+                      0
+                    )
+                  : progress?.inProgressEvaluations || 0}
               </p>
             </div>
           </div>
@@ -154,22 +120,16 @@ export default function ReportsPage() {
         </h2>
         {distributionLoading ? (
           <Loading />
-        ) : levelsDistributionData.length === 0 ? (
-          <p className='text-gray-500 text-center'>
-            Aún no hay evaluaciones completadas para mostrar.
-          </p>
         ) : (
           <div className='space-y-4'>
-            {levelsDistributionData.map(
-              (sectionDist: ExtendedSectionDistribution, index: number) => (
+            {distribution?.sections?.map(
+              (sectionDist: SectionDistribution, index: number) => (
                 <div
                   key={index}
                   className='border border-gray-200 rounded-lg p-4'
                 >
                   <h3 className='font-medium text-gray-900 mb-3'>
-                    {sectionDist.section?.displayName ||
-                      sectionDist.sectionName ||
-                      `Sección ${index + 1}`}
+                    {sectionDist.sectionName || `Sección ${index + 1}`}
                   </h3>
                   <div className='grid grid-cols-5 gap-2'>
                     {(
@@ -183,9 +143,7 @@ export default function ReportsPage() {
                     ).map((level) => (
                       <div key={level} className='text-center'>
                         <p className='text-2xl font-bold text-gray-900'>
-                          {sectionDist.distribution?.[level] ||
-                            sectionDist.levels?.[level] ||
-                            0}
+                          {sectionDist.levels?.[level] || 0}
                         </p>
                         <p className='text-xs text-gray-500 capitalize mt-1'>
                           {level.replace('_', ' ')}

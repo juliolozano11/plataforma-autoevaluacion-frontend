@@ -5,14 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useSections } from '@/hooks/use-sections';
+import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { EvaluationStatus, Section } from '@/types';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useMemo } from 'react';
 
 export default function EvaluationsPage() {
-  const router = useRouter();
   const { data: evaluations, isLoading } = useEvaluations();
   // Mostrar todas las secciones (activas e inactivas) para que los estudiantes vean las bloqueadas
   const { data: sections } = useSections();
+  const { data: activeQuestionnaires } = useActiveQuestionnaires(); // Obtener todos los cuestionarios activos
 
   if (isLoading) {
     return (
@@ -94,13 +96,9 @@ export default function EvaluationsPage() {
                         Bloqueada
                       </Button>
                     ) : (
-                      <Button
-                        onClick={() =>
-                          router.push(`/student/evaluations/${sectionId}`)
-                        }
-                      >
-                        Comenzar
-                      </Button>
+                      <Link href={`/student/evaluations/${sectionId}`}>
+                        <Button>Comenzar</Button>
+                      </Link>
                     )}
                   </div>
                 </Card>
@@ -133,14 +131,13 @@ export default function EvaluationsPage() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    onClick={() => {
-                      const sectionId = getSectionId(evaluation.sectionId);
-                      router.push(`/student/evaluations/${sectionId}`);
-                    }}
+                  <Link
+                    href={`/student/evaluations/${getSectionId(
+                      evaluation.sectionId
+                    )}`}
                   >
-                    Continuar
-                  </Button>
+                    <Button>Continuar</Button>
+                  </Link>
                 </div>
               </Card>
             ))}
@@ -172,8 +169,9 @@ export default function EvaluationsPage() {
                     {evaluation.totalScore !== undefined &&
                       evaluation.maxScore !== undefined && (
                         <p className='text-sm text-gray-500 mt-1'>
-                          Puntuación: {evaluation.totalScore} /{' '}
-                          {evaluation.maxScore}
+                          Puntuación:{' '}
+                          {Number(evaluation.totalScore).toFixed(2)} /{' '}
+                          {Number(evaluation.maxScore).toFixed(2)}
                         </p>
                       )}
                     {evaluation.completedAt && (
@@ -183,14 +181,9 @@ export default function EvaluationsPage() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant='outline'
-                    onClick={() =>
-                      router.push(`/student/reports/${evaluation._id}`)
-                    }
-                  >
-                    Ver Resultados
-                  </Button>
+                  <Link href={`/student/reports/${evaluation._id}`}>
+                    <Button variant='outline'>Ver Resultados</Button>
+                  </Link>
                 </div>
               </Card>
             ))}
@@ -207,6 +200,17 @@ export default function EvaluationsPage() {
           <div className='grid grid-cols-1 gap-4'>
             {sections
               .filter((section) => {
+                // Verificar si la sección tiene cuestionarios activos
+                const hasActiveQuestionnaires = activeQuestionnaires?.some((q) => {
+                  const qSectionId = typeof q.sectionId === 'object' ? q.sectionId._id : q.sectionId;
+                  return String(qSectionId) === String(section._id);
+                });
+
+                // Si no hay cuestionarios activos, no mostrar la sección
+                if (!hasActiveQuestionnaires) {
+                  return false;
+                }
+
                 // Mostrar solo secciones que no tienen evaluación pendiente o en progreso
                 const hasEvaluation = evaluations?.some((e) => {
                   const evalSectionId =
@@ -258,13 +262,9 @@ export default function EvaluationsPage() {
                           Bloqueada
                         </Button>
                       ) : (
-                        <Button
-                          onClick={() =>
-                            router.push(`/student/evaluations/${section._id}`)
-                          }
-                        >
-                          Comenzar
-                        </Button>
+                        <Link href={`/student/evaluations/${section._id}`}>
+                          <Button>Comenzar</Button>
+                        </Link>
                       )}
                     </div>
                   </Card>

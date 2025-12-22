@@ -2,10 +2,10 @@
 
 import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
-import { useEvaluations } from '@/hooks/use-evaluations';
 import { useQuestionnaires } from '@/hooks/use-questionnaires';
 import { useSections } from '@/hooks/use-sections';
 import { useStudents } from '@/hooks/use-users';
+import { useProgressPanel } from '@/hooks/use-reports';
 import Link from 'next/link';
 
 export default function AdminDashboardPage() {
@@ -13,20 +13,29 @@ export default function AdminDashboardPage() {
   const { data: questionnaires, isLoading: questionnairesLoading } =
     useQuestionnaires();
   const { data: students, isLoading: studentsLoading } = useStudents();
-  const { data: evaluations, isLoading: evaluationsLoading } = useEvaluations();
+  const { data: progress, isLoading: progressLoading } = useProgressPanel();
 
   const stats = {
     sections: sections?.length || 0,
     questionnaires: questionnaires?.length || 0,
     students: students?.length || 0,
-    evaluations: evaluations?.length || 0,
+    evaluations: Array.isArray(progress)
+      ? progress.reduce(
+          (sum, item) =>
+            sum +
+            (item.completed || 0) +
+            (item.inProgress || 0) +
+            (item.pending || 0),
+          0
+        )
+      : progress?.totalEvaluations || 0,
   };
 
   const isLoading =
     sectionsLoading ||
     questionnairesLoading ||
     studentsLoading ||
-    evaluationsLoading;
+    progressLoading;
 
   return (
     <div className='space-y-6'>
@@ -158,13 +167,13 @@ export default function AdminDashboardPage() {
               <div className='space-y-3 text-sm'>
                 <div className='flex justify-between'>
                   <span className='text-gray-600'>Secciones activas:</span>
-                  <span className='font-medium'>
+                  <span className='font-bold text-gray-900'>
                     {sections?.filter((s) => s.isActive).length || 0}
                   </span>
                 </div>
                 <div className='flex justify-between'>
                   <span className='text-gray-600'>Cuestionarios activos:</span>
-                  <span className='font-medium'>
+                  <span className='font-bold text-gray-900'>
                     {questionnaires?.filter((q) => q.isActive).length || 0}
                   </span>
                 </div>
@@ -172,18 +181,26 @@ export default function AdminDashboardPage() {
                   <span className='text-gray-600'>
                     Evaluaciones completadas:
                   </span>
-                  <span className='font-medium'>
-                    {evaluations?.filter((e) => e.status === 'completed')
-                      .length || 0}
+                  <span className='font-bold text-gray-900'>
+                    {Array.isArray(progress)
+                      ? progress.reduce(
+                          (sum, item) => sum + (item.completed || 0),
+                          0
+                        )
+                      : progress?.completedEvaluations || 0}
                   </span>
                 </div>
                 <div className='flex justify-between'>
                   <span className='text-gray-600'>
                     Evaluaciones en progreso:
                   </span>
-                  <span className='font-medium'>
-                    {evaluations?.filter((e) => e.status === 'in_progress')
-                      .length || 0}
+                  <span className='font-bold text-gray-900'>
+                    {Array.isArray(progress)
+                      ? progress.reduce(
+                          (sum, item) => sum + (item.inProgress || 0),
+                          0
+                        )
+                      : progress?.inProgressEvaluations || 0}
                   </span>
                 </div>
               </div>

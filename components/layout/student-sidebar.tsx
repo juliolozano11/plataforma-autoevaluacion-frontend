@@ -1,0 +1,51 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/store/auth-store';
+
+export function StudentSidebar() {
+  const pathname = usePathname();
+  const { user } = useAuthStore();
+
+  const isStudent = user?.role === 'student';
+
+  if (!isStudent) {
+    return null;
+  }
+
+  const menuItems = [
+    { href: '/student', label: 'Dashboard', icon: '📊' },
+    { href: '/student/evaluations', label: 'Mis Evaluaciones', icon: '📝' },
+    { href: '/student/reports', label: 'Mis Resultados', icon: '📈' },
+  ];
+
+  return (
+    <aside className="hidden lg:block fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 overflow-y-auto z-40">
+      <nav className="p-4 space-y-1">
+        {menuItems.map((item) => {
+          // Para el dashboard, solo activo si es exactamente la ruta
+          // Para otros, activo si la ruta empieza con el href
+          const isActive = item.href === '/student' 
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + '/');
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-indigo-50 text-indigo-700 font-medium border-l-4 border-indigo-600'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-sm">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
+

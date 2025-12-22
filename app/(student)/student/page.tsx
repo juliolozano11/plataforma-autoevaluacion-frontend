@@ -6,13 +6,15 @@ import { Loading } from '@/components/ui/loading';
 import Link from 'next/link';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useActiveSections } from '@/hooks/use-sections';
+import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { EvaluationStatus } from '@/types';
 
 export default function StudentDashboardPage() {
   const { data: evaluations, isLoading: evaluationsLoading } = useEvaluations();
   const { data: sections, isLoading: sectionsLoading } = useActiveSections();
+  const { data: activeQuestionnaires, isLoading: questionnairesLoading } = useActiveQuestionnaires();
 
-  const isLoading = evaluationsLoading || sectionsLoading;
+  const isLoading = evaluationsLoading || sectionsLoading || questionnairesLoading;
 
   const stats = {
     pending: evaluations?.filter((e) => e.status === EvaluationStatus.PENDING).length || 0,
@@ -20,14 +22,37 @@ export default function StudentDashboardPage() {
     completed: evaluations?.filter((e) => e.status === EvaluationStatus.COMPLETED).length || 0,
   };
 
-  // Obtener secciones sin evaluación o con evaluación pendiente
-  const availableSections = sections?.filter((section) => {
-    const evaluation = evaluations?.find((e) => 
-      typeof e.sectionId === 'object' 
-        ? e.sectionId._id === section._id 
-        : e.sectionId === section._id
-    );
-    return !evaluation || evaluation.status === EvaluationStatus.PENDING;
+  // Obtener cuestionarios disponibles (sin evaluación completada y de secciones activas)
+  const availableQuestionnaires = activeQuestionnaires?.filter((questionnaire) => {
+    const qSectionId = typeof questionnaire.sectionId === 'object' 
+      ? questionnaire.sectionId._id 
+      : questionnaire.sectionId;
+    
+    // Verificar que la sección esté activa
+    const section = typeof questionnaire.sectionId === 'object'
+      ? questionnaire.sectionId
+      : sections?.find((s) => s._id === qSectionId);
+    
+    if (!section || !section.isActive) {
+      return false; // No mostrar si la sección no está activa
+    }
+    
+    // Verificar si este cuestionario tiene evaluación completada
+    const hasCompletedEvaluation = evaluations?.some((e) => {
+      const evalSectionId = typeof e.sectionId === 'object' 
+        ? e.sectionId._id 
+        : e.sectionId;
+      const evalQuestionnaireId = typeof e.questionnaireId === 'object'
+        ? e.questionnaireId._id
+        : e.questionnaireId;
+      
+      return String(evalSectionId) === String(qSectionId) &&
+             String(evalQuestionnaireId) === String(questionnaire._id) &&
+             e.status === EvaluationStatus.COMPLETED;
+    });
+    
+    // Mostrar solo si NO tiene evaluación completada
+    return !hasCompletedEvaluation;
   }) || [];
 
   return (
@@ -85,36 +110,62 @@ export default function StudentDashboardPage() {
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Evaluaciones Disponibles</h2>
-            {availableSections.length === 0 ? (
+            {availableQuestionnaires.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-4">
                 No hay evaluaciones disponibles en este momento
               </p>
             ) : (
               <div className="space-y-4">
-                {availableSections.map((section) => {
-                  const evaluation = evaluations?.find((e) =>
-                    typeof e.sectionId === 'object'
-                      ? e.sectionId._id === section._id
-                      : e.sectionId === section._id
-                  );
+                {availableQuestionnaires.map((questionnaire) => {
+                  const section = typeof questionnaire.sectionId === 'object'
+                    ? questionnaire.sectionId
+                    : sections?.find((s) => s._id === questionnaire.sectionId);
+                  
+                  const evaluation = evaluations?.find((e) => {
+                    const evalSectionId = typeof e.sectionId === 'object'
+                      ? e.sectionId._id
+                      : e.sectionId;
+                    const evalQuestionnaireId = typeof e.questionnaireId === 'object'
+                      ? e.questionnaireId._id
+                      : e.questionnaireId;
+                    return String(evalSectionId) === String(section?._id) &&
+                           String(evalQuestionnaireId) === String(questionnaire._id);
+                  });
+                  
+                  const getStatusText = () => {
+                    if (evaluation?.status === EvaluationStatus.PENDING) return 'Pendiente';
+                    if (evaluation?.status === EvaluationStatus.IN_PROGRESS) return 'En Progreso';
+                    return 'Nueva';
+                  };
                   
                   return (
-                    <div key={section._id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={questionnaire._id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-gray-900">{section.displayName}</h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {section.description || 'Sin descripción'}
-                          </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Estado: {evaluation ? 'Pendiente' : 'Nueva'}
-                          </p>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">
+                            {questionnaire.title || 'Cuestionario sin nombre'}
+                          </h3>
+                          <div className="mt-1 space-y-1">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Sección:</span> {section?.displayName || 'Sección'}
+                            </p>
+                            {questionnaire.description && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Competencia:</span> {questionnaire.description}
+                              </p>
+                            )}
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Estado:</span> {getStatusText()}
+                            </p>
+                          </div>
                         </div>
-                        <Link href={`/student/evaluations/${section._id}`}>
-                          <Button>
-                            {evaluation ? 'Continuar' : 'Comenzar'}
-                          </Button>
-                        </Link>
+                        <div className="ml-4">
+                          <Link href={`/student/evaluations/${section?._id || questionnaire.sectionId}`}>
+                            <Button>
+                              {evaluation ? 'Continuar' : 'Comenzar'}
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   );
@@ -132,25 +183,45 @@ export default function StudentDashboardPage() {
                     ? evaluation.sectionId 
                     : sections?.find((s) => s._id === evaluation.sectionId);
                   
+                  const questionnaire = typeof evaluation.questionnaireId === 'object'
+                    ? evaluation.questionnaireId
+                    : activeQuestionnaires?.find((q) => {
+                        const qId = typeof q._id === 'string' ? q._id : String(q._id);
+                        const evalQId = typeof evaluation.questionnaireId === 'string' 
+                          ? evaluation.questionnaireId 
+                          : String(evaluation.questionnaireId);
+                        return qId === evalQId;
+                      });
+                  
+                  const getStatusText = () => {
+                    if (evaluation.status === EvaluationStatus.PENDING) return 'Pendiente';
+                    if (evaluation.status === EvaluationStatus.IN_PROGRESS) return 'En Progreso';
+                    if (evaluation.status === EvaluationStatus.COMPLETED) return 'Completada';
+                    return 'Desconocido';
+                  };
+                  
                   return (
                     <div key={evaluation._id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-medium text-gray-900">
-                            {section?.displayName || 'Sección'}
+                            {questionnaire?.title || 'Cuestionario sin nombre'}
                           </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Estado: {evaluation.status === EvaluationStatus.PENDING && 'Pendiente'}
-                            {evaluation.status === EvaluationStatus.IN_PROGRESS && 'En Progreso'}
-                            {evaluation.status === EvaluationStatus.COMPLETED && 'Completada'}
-                          </p>
-                          {evaluation.level && (
-                            <p className="text-sm text-gray-500">
-                              Nivel: {evaluation.level}
+                          <div className="mt-1 space-y-1">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Sección:</span> {section?.displayName || 'Sección'}
                             </p>
-                          )}
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Estado:</span> {getStatusText()}
+                            </p>
+                            {evaluation.level && (
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Nivel:</span> {evaluation.level}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 ml-4">
                           {evaluation.status === EvaluationStatus.COMPLETED ? (
                             <Link href={`/student/reports/${evaluation._id}`}>
                               <Button variant="outline">Ver Resultados</Button>

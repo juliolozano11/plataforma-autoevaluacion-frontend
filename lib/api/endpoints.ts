@@ -24,6 +24,16 @@ export const API_ENDPOINTS = {
     toggleActive: (id: string) => `/sections/${id}/toggle-active`,
     delete: (id: string) => `/sections/${id}`,
   },
+  // Careers
+  careers: {
+    list: '/careers',
+    active: '/careers/active',
+    byId: (id: string) => `/careers/${id}`,
+    create: '/careers',
+    update: (id: string) => `/careers/${id}`,
+    toggleActive: (id: string) => `/careers/${id}/toggle-active`,
+    delete: (id: string) => `/careers/${id}`,
+  },
   // Questionnaires
   questionnaires: {
     list: '/questionnaires',

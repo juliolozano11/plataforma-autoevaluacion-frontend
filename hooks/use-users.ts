@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
-import { User } from '@/types';
+import { User, RegisterData } from '@/types';
 
 // Hook para obtener todos los usuarios (Solo Admin)
 export const useUsers = () => {
@@ -43,6 +43,21 @@ export const useUser = (id: string) => {
   });
 };
 
+// Hook para crear usuario (Solo Admin)
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userData: RegisterData): Promise<User> => {
+      const { data } = await apiClient.post(API_ENDPOINTS.auth.register, userData);
+      return data.user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+};
+
 // Hook para actualizar usuario
 export const useUpdateUser = () => {
   const queryClient = useQueryClient();
@@ -72,4 +87,3 @@ export const useDeleteUser = () => {
     },
   });
 };
-
