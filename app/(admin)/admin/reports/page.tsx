@@ -3,39 +3,114 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
-import { useLevelsDistribution, useProgressPanel } from '@/hooks/use-reports';
+import {
+  exportGeneralReport,
+  exportGroupReportByCareer,
+  exportGroupReportByCourse,
+  useProgressPanel,
+} from '@/hooks/use-reports';
 import { useSections } from '@/hooks/use-sections';
 import { useStudents } from '@/hooks/use-users';
-import { SectionDistribution } from '@/types';
 import { useState } from 'react';
 
 export default function ReportsPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [selectedCareer, setSelectedCareer] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: sections } = useSections();
   const { data: progress, isLoading: progressLoading } = useProgressPanel(
     selectedSectionId || undefined
   );
-  const { data: distribution, isLoading: distributionLoading } =
-    useLevelsDistribution();
-  const { data: students } = useStudents(
-    selectedCareer || undefined,
-    selectedCourse || undefined
-  );
 
+  // Obtener todos los estudiantes activos para los filtros
+  const { data: allStudents } = useStudents();
+
+  // Obtener carreras únicas de estudiantes activos
   const careers = Array.from(
-    new Set(students?.map((s) => s.career).filter(Boolean) || [])
-  );
+    new Set(
+      allStudents
+        ?.filter((s) => s.isActive && s.career)
+        .map((s) => s.career)
+        .filter(Boolean) || []
+    )
+  ).sort();
+
+  // Obtener cursos únicos según la carrera seleccionada
   const courses = Array.from(
     new Set(
-      students
-        ?.filter((s) => !selectedCareer || s.career === selectedCareer)
+      allStudents
+        ?.filter(
+          (s) =>
+            s.isActive &&
+            s.course &&
+            (!selectedCareer || s.career === selectedCareer)
+        )
         .map((s) => s.course)
         .filter(Boolean) || []
     )
-  );
+  ).sort();
+
+  // Manejar exportación de reporte general
+  const handleExportGeneral = async () => {
+    try {
+      setIsExporting(true);
+      await exportGeneralReport();
+    } catch (error) {
+      console.error('Error al exportar reporte general:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Error desconocido al exportar el reporte';
+      alert(
+        `Error al exportar el reporte: ${errorMessage}. Por favor, intenta nuevamente.`
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Manejar exportación de reporte grupal
+  const handleExportGroupReport = async () => {
+    try {
+      setIsExporting(true);
+      if (selectedCareer && selectedCourse) {
+        await exportGroupReportByCourse(
+          selectedCareer,
+          selectedCourse,
+          selectedSectionId || undefined
+        );
+      } else if (selectedCareer) {
+        await exportGroupReportByCareer(
+          selectedCareer,
+          selectedSectionId || undefined
+        );
+      } else {
+        alert('Por favor, selecciona al menos una carrera');
+        setIsExporting(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error al exportar reporte grupal:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Error desconocido al exportar el reporte';
+      alert(
+        `Error al exportar el reporte: ${errorMessage}. Por favor, intenta nuevamente.`
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Manejar ver estadísticas detalladas
+  const handleViewDetailedStats = () => {
+    // Por ahora, exportamos el reporte general con más detalles
+    // En el futuro se podría crear una página dedicada
+    handleExportGeneral();
+  };
 
   return (
     <div className='space-y-6'>
@@ -114,7 +189,7 @@ export default function ReportsPage() {
       </Card>
 
       {/* Distribución de Niveles */}
-      <Card className='p-6'>
+      {/* <Card className='p-6'>
         <h2 className='text-xl font-semibold text-gray-900 mb-4'>
           Distribución de Niveles por Competencia
         </h2>
@@ -156,7 +231,7 @@ export default function ReportsPage() {
             )}
           </div>
         )}
-      </Card>
+      </Card> */}
 
       {/* Filtros para Reportes Grupales */}
       <Card className='p-6'>
@@ -176,7 +251,7 @@ export default function ReportsPage() {
               }}
               className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white'
             >
-              <option value=''>Todas las carreras</option>
+              <option value=''>Seleccionar</option>
               {careers.map((career) => (
                 <option key={career} value={career}>
                   {career}
@@ -194,7 +269,7 @@ export default function ReportsPage() {
               className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white'
               disabled={!selectedCareer}
             >
-              <option value=''>Todos los cursos</option>
+              <option value=''>Seleccionar</option>
               {courses.map((course) => (
                 <option key={course} value={course}>
                   {course}
@@ -204,13 +279,10 @@ export default function ReportsPage() {
           </div>
           <div className='flex items-end'>
             <Button
-              onClick={() => {
-                // Aquí se implementaría la navegación a reporte grupal
-                alert('Funcionalidad de reporte grupal en desarrollo');
-              }}
-              disabled={!selectedCareer}
+              onClick={handleExportGroupReport}
+              disabled={!selectedCareer || isExporting}
             >
-              Ver Reporte Grupal
+              {isExporting ? 'Exportando...' : 'Ver Reporte Grupal'}
             </Button>
           </div>
         </div>
@@ -222,12 +294,22 @@ export default function ReportsPage() {
           Acciones Rápidas
         </h2>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Button variant='outline' className='justify-start'>
-            📊 Exportar Reporte General
+          <Button
+            variant='outline'
+            className='justify-start'
+            onClick={handleExportGeneral}
+            disabled={isExporting}
+          >
+            📊 {isExporting ? 'Exportando...' : 'Exportar Reporte General'}
           </Button>
-          <Button variant='outline' className='justify-start'>
-            📈 Ver Estadísticas Detalladas
-          </Button>
+          {/* <Button
+            variant='outline'
+            className='justify-start'
+            onClick={handleViewDetailedStats}
+            disabled={isExporting}
+          >
+            📈 {isExporting ? 'Exportando...' : 'Ver Estadísticas Detalladas'}
+          </Button> */}
         </div>
       </Card>
     </div>

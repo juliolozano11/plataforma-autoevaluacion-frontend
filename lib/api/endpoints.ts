@@ -81,6 +81,9 @@ export const API_ENDPOINTS = {
     groupByCourse: '/reports/group/course',
     progress: '/reports/progress',
     levelsDistribution: '/reports/levels-distribution',
+    exportGeneral: '/reports/export/general',
+    exportGroupByCareer: '/reports/export/group/career',
+    exportGroupByCourse: '/reports/export/group/course',
   },
   // Upload
   upload: {
