@@ -11,13 +11,13 @@ import {
   useStartEvaluation,
   useSubmitAnswer,
 } from '@/hooks/use-evaluations';
-import { useQueryClient } from '@tanstack/react-query';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useQuestions } from '@/hooks/use-questions';
 import { useSection } from '@/hooks/use-sections';
 import { EvaluationStatus, QuestionType } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function EvaluationPage() {
   const params = useParams();
@@ -27,7 +27,7 @@ export default function EvaluationPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [evaluationId, setEvaluationId] = useState<string | null>(null);
-  
+
   // Refs para evitar loops infinitos
   const isCreatingEvaluation = useRef(false);
   const isStartingEvaluation = useRef(false);
@@ -55,18 +55,20 @@ export default function EvaluationPage() {
   // Memoizar la evaluación existente para esta sección y cuestionario
   const existingEvaluation = useMemo(() => {
     if (!questionnaireId) return undefined;
-    
+
     return evaluationsArray.find((e) => {
-      const evalSectionId = typeof e.sectionId === 'object' 
-        ? e.sectionId._id 
-        : e.sectionId;
-      const evalQuestionnaireId = typeof e.questionnaireId === 'object'
-        ? e.questionnaireId._id
-        : e.questionnaireId;
-      
+      const evalSectionId =
+        typeof e.sectionId === 'object' ? e.sectionId?._id : e.sectionId;
+      const evalQuestionnaireId =
+        typeof e.questionnaireId === 'object'
+          ? e.questionnaireId._id
+          : e.questionnaireId;
+
       // Buscar por sección Y cuestionario
-      return String(evalSectionId) === String(sectionId) &&
-             String(evalQuestionnaireId) === String(questionnaireId);
+      return (
+        String(evalSectionId) === String(sectionId) &&
+        String(evalQuestionnaireId) === String(questionnaireId)
+      );
     });
   }, [evaluationsArray, sectionId, questionnaireId]);
 
@@ -90,12 +92,20 @@ export default function EvaluationPage() {
     }
 
     // No crear evaluación si no hay cuestionarios o questionnaireId
-    if (!questionnaires || questionnaires.length === 0 || !memoizedQuestionnaireId) {
+    if (
+      !questionnaires ||
+      questionnaires.length === 0 ||
+      !memoizedQuestionnaireId
+    ) {
       return;
     }
 
     // Si ya tenemos un evaluationId establecido y existe la evaluación, no hacer nada
-    if (evaluationId && existingEvaluation && existingEvaluation._id === evaluationId) {
+    if (
+      evaluationId &&
+      existingEvaluation &&
+      existingEvaluation._id === evaluationId
+    ) {
       lastExistingEvaluationId.current = existingEvaluation._id;
       return;
     }
@@ -146,11 +156,13 @@ export default function EvaluationPage() {
             // Si el error es 409 (Conflict), significa que ya existe una evaluación
             // Usar refetch en lugar de invalidate para tener más control
             if (error?.response?.status === 409) {
-              console.log('[DEBUG] Evaluación ya existe, recargando evaluaciones...');
+              console.log(
+                '[DEBUG] Evaluación ya existe, recargando evaluaciones...'
+              );
               // Refetch solo cuando sea necesario, no invalidar (que causa re-renders)
-              queryClient.refetchQueries({ 
+              queryClient.refetchQueries({
                 queryKey: ['evaluations', sectionId],
-                exact: true 
+                exact: true,
               });
             } else {
               console.error('Error al crear evaluación:', error);
@@ -199,7 +211,7 @@ export default function EvaluationPage() {
           // Actualizar directamente el cache en lugar de invalidar
           queryClient.setQueryData(['evaluations', sectionId], (old: any) => {
             if (Array.isArray(old)) {
-              return old.map((e: any) => 
+              return old.map((e: any) =>
                 e._id === evaluationId ? { ...e, ...data } : e
               );
             }
@@ -212,7 +224,12 @@ export default function EvaluationPage() {
         },
       });
     }
-  }, [evaluationId, questions?.length, currentEvaluationStatus, startEvaluation.isPending]);
+  }, [
+    evaluationId,
+    questions?.length,
+    currentEvaluationStatus,
+    startEvaluation.isPending,
+  ]);
 
   // Validar que el índice esté dentro del rango (debe estar antes de los returns)
   const validQuestionIndex = questions
@@ -221,7 +238,11 @@ export default function EvaluationPage() {
 
   // Ajustar el índice solo cuando cambia la longitud de las preguntas (evitar loop infinito)
   useEffect(() => {
-    if (questions && questions.length > 0 && currentQuestionIndex >= questions.length) {
+    if (
+      questions &&
+      questions.length > 0 &&
+      currentQuestionIndex >= questions.length
+    ) {
       setCurrentQuestionIndex(questions.length - 1);
     }
   }, [questions?.length, currentQuestionIndex]); // Solo cuando cambia la longitud de questions
@@ -277,7 +298,7 @@ export default function EvaluationPage() {
       evaluationId,
       sectionId,
       currentQuestionIndex,
-      totalQuestions: questions?.length
+      totalQuestions: questions?.length,
     });
 
     const currentQuestion = questions?.[currentQuestionIndex];
@@ -296,7 +317,10 @@ export default function EvaluationPage() {
     }
 
     try {
-      console.log('[DEBUG] Llamando a completeEvaluation con ID:', evaluationId);
+      console.log(
+        '[DEBUG] Llamando a completeEvaluation con ID:',
+        evaluationId
+      );
       await completeEvaluation.mutateAsync(evaluationId);
       router.push(`/student/reports/${evaluationId}`);
     } catch (error) {
@@ -375,11 +399,15 @@ export default function EvaluationPage() {
   const isLastQuestion = validQuestionIndex === questions.length - 1;
 
   // Obtener el cuestionario actual
-  const currentQuestionnaire = questionnaires?.find((q) => {
-    const qId = typeof q._id === 'string' ? q._id : String(q._id);
-    const evalQId = typeof questionnaireId === 'string' ? questionnaireId : String(questionnaireId);
-    return qId === evalQId;
-  }) || questionnaires?.[0];
+  const currentQuestionnaire =
+    questionnaires?.find((q) => {
+      const qId = typeof q._id === 'string' ? q._id : String(q._id);
+      const evalQId =
+        typeof questionnaireId === 'string'
+          ? questionnaireId
+          : String(questionnaireId);
+      return qId === evalQId;
+    }) || questionnaires?.[0];
 
   return (
     <div className='max-w-4xl mx-auto space-y-6'>

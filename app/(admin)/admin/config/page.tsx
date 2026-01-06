@@ -89,7 +89,7 @@ export default function EvaluationConfigPage() {
 
   const handleEdit = (config: any) => {
     setEditingId(config._id);
-    const sectionId = config.sectionId._id || config.sectionId;
+    const sectionId = config.sectionId?._id || config?.sectionId;
     setFormSectionId(sectionId);
     setValue('sectionId', sectionId);
     setValue('muyBajo', config.muyBajo);

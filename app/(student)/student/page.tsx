@@ -51,7 +51,7 @@ export default function StudentDashboardPage() {
       // Verificar si este cuestionario tiene evaluación completada
       const hasCompletedEvaluation = evaluations?.some((e) => {
         const evalSectionId =
-          typeof e.sectionId === 'object' ? e.sectionId._id : e.sectionId;
+          typeof e.sectionId === 'object' ? e.sectionId?._id : e?.sectionId;
         const evalQuestionnaireId =
           typeof e.questionnaireId === 'object'
             ? e.questionnaireId._id
