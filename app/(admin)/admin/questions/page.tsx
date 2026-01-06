@@ -140,7 +140,7 @@ export default function QuestionsPage() {
 
   const getQuestionnaireName = (qId: string | Questionnaire) => {
     if (typeof qId === 'object') {
-      return qId.title;
+      return qId?.title;
     }
     const questionnaire = questionnaires?.find((q) => q._id === qId);
     return questionnaire?.title || 'Cuestionario desconocido';
@@ -315,16 +315,39 @@ export default function QuestionsPage() {
         </Card>
       )}
 
-      {selectedQuestionnaireId && (
-        <div className='mb-4'>
-          <p className='text-sm text-gray-600'>
-            Filtrando por:{' '}
-            <span className='font-medium'>
-              {getQuestionnaireName(selectedQuestionnaireId)}
-            </span>
-          </p>
+      <div className='mb-4 flex items-center justify-between'>
+        <div>
+          {selectedQuestionnaireId ? (
+            <p className='text-sm text-gray-600'>
+              Filtrando por:{' '}
+              <span className='font-medium'>
+                {getQuestionnaireName(selectedQuestionnaireId)}
+              </span>
+            </p>
+          ) : (
+            <p className='text-sm text-gray-600'>
+              Mostrando todas las preguntas
+            </p>
+          )}
         </div>
-      )}
+        <div>
+          <select
+            value={selectedQuestionnaireId}
+            onChange={(e) => {
+              setSelectedQuestionnaireId(e.target.value);
+              setValue('questionnaireId', e.target.value);
+            }}
+            className='px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white text-sm'
+          >
+            <option value=''>Todos los cuestionarios</option>
+            {questionnaires?.map((q) => (
+              <option key={q._id} value={q._id}>
+                {q.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div className='grid grid-cols-1 gap-4'>
         {questions && questions.length === 0 ? (

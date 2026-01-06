@@ -67,8 +67,8 @@ export default function QuestionnairesPage() {
     setIsCreating(false);
     const sectionId =
       typeof questionnaire.sectionId === 'object'
-        ? questionnaire.sectionId._id
-        : questionnaire.sectionId;
+        ? questionnaire.sectionId?._id
+        : questionnaire?.sectionId;
     setValue('sectionId', sectionId);
     setValue('title', questionnaire.title);
     setValue('description', questionnaire.description || '');
@@ -88,7 +88,7 @@ export default function QuestionnairesPage() {
 
   const getSectionName = (sectionId: string | Section) => {
     if (typeof sectionId === 'object') {
-      return sectionId.displayName;
+      return sectionId?.displayName;
     }
     const section = sections?.find((s) => s._id === sectionId);
     return section?.displayName || 'Sección desconocida';

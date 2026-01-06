@@ -8,14 +8,17 @@ export const useQuestions = (questionnaireId?: string) => {
   return useQuery({
     queryKey: ['questions', questionnaireId],
     queryFn: async (): Promise<Question[]> => {
-      if (!questionnaireId) {
-        return [];
+      if (questionnaireId) {
+        // Si hay questionnaireId, filtrar por ese cuestionario
+        const url = `${API_ENDPOINTS.questions.list}?questionnaireId=${questionnaireId}`;
+        const { data } = await apiClient.get(url);
+        return data;
+      } else {
+        // Si no hay questionnaireId, obtener todas las preguntas
+        const { data } = await apiClient.get(API_ENDPOINTS.questions.list);
+        return data;
       }
-      const url = `${API_ENDPOINTS.questions.list}?questionnaireId=${questionnaireId}`;
-      const { data } = await apiClient.get(url);
-      return data;
     },
-    enabled: !!questionnaireId, // Solo ejecutar si hay questionnaireId
   });
 };
 

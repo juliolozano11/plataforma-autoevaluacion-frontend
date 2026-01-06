@@ -55,7 +55,7 @@ export default function IndividualReportPage() {
 
   const sectionName =
     typeof evaluation.sectionId === 'object'
-      ? evaluation.sectionId.displayName
+      ? evaluation.sectionId?.displayName
       : 'Sección';
 
   return (
@@ -75,7 +75,8 @@ export default function IndividualReportPage() {
               Puntuación Total
             </p>
             <p className='text-3xl font-bold text-gray-900 mt-2'>
-              {evaluation.totalScore !== undefined && evaluation.totalScore !== null
+              {evaluation.totalScore !== undefined &&
+              evaluation.totalScore !== null
                 ? Number(evaluation.totalScore).toFixed(2)
                 : '0.00'}{' '}
               /{' '}
@@ -88,9 +89,9 @@ export default function IndividualReportPage() {
             <p className='text-sm font-medium text-gray-500'>Porcentaje</p>
             <p className='text-3xl font-bold text-gray-900 mt-2'>
               {evaluation.maxScore && evaluation.totalScore
-                ? (
-                    (evaluation.totalScore / evaluation.maxScore) * 100
-                  ).toFixed(2)
+                ? ((evaluation.totalScore / evaluation.maxScore) * 100).toFixed(
+                    2
+                  )
                 : '0.00'}
               %
             </p>
@@ -139,11 +140,13 @@ export default function IndividualReportPage() {
                     <div>
                       <p className='text-sm text-gray-500'>Puntuación</p>
                       <p className='text-xl font-semibold text-gray-900'>
-                        {sectionResult.score !== undefined && sectionResult.score !== null
+                        {sectionResult.score !== undefined &&
+                        sectionResult.score !== null
                           ? Number(sectionResult.score).toFixed(2)
                           : '0.00'}{' '}
                         /{' '}
-                        {sectionResult.maxScore !== undefined && sectionResult.maxScore !== null
+                        {sectionResult.maxScore !== undefined &&
+                        sectionResult.maxScore !== null
                           ? Number(sectionResult.maxScore).toFixed(2)
                           : '0.00'}
                       </p>
@@ -154,7 +157,7 @@ export default function IndividualReportPage() {
                         {sectionResult.maxScore && sectionResult.score
                           ? (
                               (sectionResult.score / sectionResult.maxScore) *
-                                100
+                              100
                             ).toFixed(2)
                           : '0.00'}
                         %

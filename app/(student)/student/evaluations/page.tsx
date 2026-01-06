@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
-import { useSections } from '@/hooks/use-sections';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
+import { useSections } from '@/hooks/use-sections';
 import { EvaluationStatus, Section } from '@/types';
 import Link from 'next/link';
-import { useMemo } from 'react';
 
 export default function EvaluationsPage() {
   const { data: evaluations, isLoading } = useEvaluations();
@@ -26,7 +25,7 @@ export default function EvaluationsPage() {
 
   const getSectionName = (sectionId: string | Section) => {
     if (typeof sectionId === 'object') {
-      return sectionId.displayName;
+      return sectionId?.displayName;
     }
     return sections?.find((s) => s._id === sectionId)?.displayName || 'Sección';
   };
@@ -54,7 +53,8 @@ export default function EvaluationsPage() {
     // Si no tiene questionnaireId, buscar el primer cuestionario activo de la sección
     const sectionId = getSectionId(evaluation.sectionId);
     const questionnaire = activeQuestionnaires?.find((q) => {
-      const qSectionId = typeof q.sectionId === 'object' ? q.sectionId._id : q.sectionId;
+      const qSectionId =
+        typeof q.sectionId === 'object' ? q.sectionId?._id : q.sectionId;
       return String(qSectionId) === String(sectionId);
     });
     return questionnaire?.title || getSectionName(evaluation.sectionId);
@@ -200,9 +200,8 @@ export default function EvaluationsPage() {
                     {evaluation.totalScore !== undefined &&
                       evaluation.maxScore !== undefined && (
                         <p className='text-sm text-gray-500 mt-1'>
-                          Puntuación:{' '}
-                          {Number(evaluation.totalScore).toFixed(2)} /{' '}
-                          {Number(evaluation.maxScore).toFixed(2)}
+                          Puntuación: {Number(evaluation.totalScore).toFixed(2)}{' '}
+                          / {Number(evaluation.maxScore).toFixed(2)}
                         </p>
                       )}
                     {evaluation.completedAt && (
@@ -232,10 +231,14 @@ export default function EvaluationsPage() {
             {sections
               .filter((section) => {
                 // Obtener los cuestionarios activos de esta sección
-                const sectionQuestionnaires = activeQuestionnaires?.filter((q) => {
-                  const qSectionId = typeof q.sectionId === 'object' ? q.sectionId._id : q.sectionId;
-                  return String(qSectionId) === String(section._id);
-                }) || [];
+                const sectionQuestionnaires =
+                  activeQuestionnaires?.filter((q) => {
+                    const qSectionId =
+                      typeof q.sectionId === 'object'
+                        ? q.sectionId?._id
+                        : q.sectionId;
+                    return String(qSectionId) === String(section._id);
+                  }) || [];
 
                 // Si no hay cuestionarios activos, no mostrar la sección
                 if (sectionQuestionnaires.length === 0) {
@@ -243,49 +246,56 @@ export default function EvaluationsPage() {
                 }
 
                 // Verificar si hay algún cuestionario de esta sección que NO tenga evaluación completada
-                const hasAvailableQuestionnaire = sectionQuestionnaires.some((questionnaire) => {
-                  // Verificar si este cuestionario tiene una evaluación completada
-                  const hasCompletedEvaluation = evaluations?.some((e) => {
-                    const evalSectionId =
-                      typeof e.sectionId === 'object'
-                        ? e.sectionId._id
-                        : e.sectionId;
-                    const evalQuestionnaireId =
-                      typeof e.questionnaireId === 'object'
-                        ? e.questionnaireId._id
-                        : e.questionnaireId;
-                    
-                    // Comparar por questionnaireId si existe
-                    if (evalQuestionnaireId) {
-                      return (
-                        String(evalQuestionnaireId) === String(questionnaire._id) &&
-                        e.status === EvaluationStatus.COMPLETED
-                      );
-                    }
-                    
-                    // Si no tiene questionnaireId, comparar por sectionId y verificar si es el primer cuestionario
-                    if (String(evalSectionId) === String(section._id)) {
-                      // Si es el primer cuestionario de la sección y la evaluación está completada
-                      const sortedQuestionnaires = sectionQuestionnaires
-                        .sort((a, b) => {
-                          const titleA = a.title || '';
-                          const titleB = b.title || '';
-                          return titleA.localeCompare(titleB);
-                        });
-                      
-                      if (sortedQuestionnaires.length > 0 && 
-                          String(sortedQuestionnaires[0]._id) === String(questionnaire._id) &&
-                          e.status === EvaluationStatus.COMPLETED) {
-                        return true;
-                      }
-                    }
-                    
-                    return false;
-                  });
+                const hasAvailableQuestionnaire = sectionQuestionnaires.some(
+                  (questionnaire) => {
+                    // Verificar si este cuestionario tiene una evaluación completada
+                    const hasCompletedEvaluation = evaluations?.some((e) => {
+                      const evalSectionId =
+                        typeof e.sectionId === 'object'
+                          ? e.sectionId._id
+                          : e.sectionId;
+                      const evalQuestionnaireId =
+                        typeof e.questionnaireId === 'object'
+                          ? e.questionnaireId._id
+                          : e.questionnaireId;
 
-                  // Si no tiene evaluación completada, este cuestionario está disponible
-                  return !hasCompletedEvaluation;
-                });
+                      // Comparar por questionnaireId si existe
+                      if (evalQuestionnaireId) {
+                        return (
+                          String(evalQuestionnaireId) ===
+                            String(questionnaire._id) &&
+                          e.status === EvaluationStatus.COMPLETED
+                        );
+                      }
+
+                      // Si no tiene questionnaireId, comparar por sectionId y verificar si es el primer cuestionario
+                      if (String(evalSectionId) === String(section._id)) {
+                        // Si es el primer cuestionario de la sección y la evaluación está completada
+                        const sortedQuestionnaires = sectionQuestionnaires.sort(
+                          (a, b) => {
+                            const titleA = a.title || '';
+                            const titleB = b.title || '';
+                            return titleA.localeCompare(titleB);
+                          }
+                        );
+
+                        if (
+                          sortedQuestionnaires.length > 0 &&
+                          String(sortedQuestionnaires[0]._id) ===
+                            String(questionnaire._id) &&
+                          e.status === EvaluationStatus.COMPLETED
+                        ) {
+                          return true;
+                        }
+                      }
+
+                      return false;
+                    });
+
+                    // Si no tiene evaluación completada, este cuestionario está disponible
+                    return !hasCompletedEvaluation;
+                  }
+                );
 
                 // Mostrar la sección solo si tiene al menos un cuestionario disponible
                 // y no tiene evaluaciones pendientes o en progreso
@@ -306,56 +316,70 @@ export default function EvaluationsPage() {
               .map((section) => {
                 const isBlocked = !section.isActive;
                 // Obtener los cuestionarios activos de esta sección que NO están completados
-                const sectionQuestionnaires = activeQuestionnaires
-                  ?.filter((q) => {
-                    const qSectionId = typeof q.sectionId === 'object' ? q.sectionId._id : q.sectionId;
-                    return String(qSectionId) === String(section._id);
-                  })
-                  .filter((questionnaire) => {
-                    // Filtrar cuestionarios que ya tienen evaluación completada
-                    const hasCompletedEvaluation = evaluations?.some((e) => {
-                      const evalQuestionnaireId =
-                        typeof e.questionnaireId === 'object'
-                          ? e.questionnaireId._id
-                          : e.questionnaireId;
-                      const evalSectionId =
-                        typeof e.sectionId === 'object'
-                          ? e.sectionId._id
-                          : e.sectionId;
-                      
-                      // Comparar por questionnaireId si existe
-                      if (evalQuestionnaireId) {
-                        return (
-                          String(evalQuestionnaireId) === String(questionnaire._id) &&
-                          e.status === EvaluationStatus.COMPLETED
-                        );
-                      }
-                      
-                      // Si no tiene questionnaireId, comparar por sectionId
-                      if (String(evalSectionId) === String(section._id) &&
-                          e.status === EvaluationStatus.COMPLETED) {
-                        // Verificar si este es el primer cuestionario de la sección
-                        const allSectionQuestionnaires = activeQuestionnaires
-                          ?.filter((q) => {
-                            const qSecId = typeof q.sectionId === 'object' ? q.sectionId._id : q.sectionId;
-                            return String(qSecId) === String(section._id);
-                          })
-                          .sort((a, b) => {
-                            const titleA = a.title || '';
-                            const titleB = b.title || '';
-                            return titleA.localeCompare(titleB);
-                          }) || [];
-                        
-                        if (allSectionQuestionnaires.length > 0) {
-                          return String(allSectionQuestionnaires[0]._id) === String(questionnaire._id);
+                const sectionQuestionnaires =
+                  activeQuestionnaires
+                    ?.filter((q) => {
+                      const qSectionId =
+                        typeof q.sectionId === 'object'
+                          ? q.sectionId?._id
+                          : q.sectionId;
+                      return String(qSectionId) === String(section._id);
+                    })
+                    .filter((questionnaire) => {
+                      // Filtrar cuestionarios que ya tienen evaluación completada
+                      const hasCompletedEvaluation = evaluations?.some((e) => {
+                        const evalQuestionnaireId =
+                          typeof e.questionnaireId === 'object'
+                            ? e.questionnaireId._id
+                            : e.questionnaireId;
+                        const evalSectionId =
+                          typeof e.sectionId === 'object'
+                            ? e.sectionId._id
+                            : e.sectionId;
+
+                        // Comparar por questionnaireId si existe
+                        if (evalQuestionnaireId) {
+                          return (
+                            String(evalQuestionnaireId) ===
+                              String(questionnaire._id) &&
+                            e.status === EvaluationStatus.COMPLETED
+                          );
                         }
-                      }
-                      
-                      return false;
-                    });
-                    
-                    return !hasCompletedEvaluation;
-                  }) || [];
+
+                        // Si no tiene questionnaireId, comparar por sectionId
+                        if (
+                          String(evalSectionId) === String(section._id) &&
+                          e.status === EvaluationStatus.COMPLETED
+                        ) {
+                          // Verificar si este es el primer cuestionario de la sección
+                          const allSectionQuestionnaires =
+                            activeQuestionnaires
+                              ?.filter((q) => {
+                                const qSecId =
+                                  typeof q.sectionId === 'object'
+                                    ? q.sectionId?._id
+                                    : q.sectionId;
+                                return String(qSecId) === String(section._id);
+                              })
+                              .sort((a, b) => {
+                                const titleA = a.title || '';
+                                const titleB = b.title || '';
+                                return titleA.localeCompare(titleB);
+                              }) || [];
+
+                          if (allSectionQuestionnaires.length > 0) {
+                            return (
+                              String(allSectionQuestionnaires[0]._id) ===
+                              String(questionnaire._id)
+                            );
+                          }
+                        }
+
+                        return false;
+                      });
+
+                      return !hasCompletedEvaluation;
+                    }) || [];
 
                 // Si no hay cuestionarios disponibles, no mostrar la sección
                 if (sectionQuestionnaires.length === 0) {
@@ -391,11 +415,12 @@ export default function EvaluationsPage() {
                             {sectionQuestionnaires[0].description}
                           </p>
                         )}
-                        {!sectionQuestionnaires[0]?.description && section.description && (
-                          <p className='text-sm text-gray-500 mt-1'>
-                            {section.description}
-                          </p>
-                        )}
+                        {!sectionQuestionnaires[0]?.description &&
+                          section.description && (
+                            <p className='text-sm text-gray-500 mt-1'>
+                              {section.description}
+                            </p>
+                          )}
                         {isBlocked && (
                           <p className='text-sm text-red-600 mt-1'>
                             Esta evaluación no está disponible en este momento

@@ -113,7 +113,7 @@ export default function EvaluationConfigPage() {
 
   const getSectionName = (sectionId: string | any) => {
     if (typeof sectionId === 'object') {
-      return sectionId.displayName;
+      return sectionId?.displayName;
     }
     return sections?.find((s) => s._id === sectionId)?.displayName || 'Sección';
   };
