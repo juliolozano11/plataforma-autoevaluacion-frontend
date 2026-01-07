@@ -7,13 +7,41 @@ import { useEvaluations } from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useSections } from '@/hooks/use-sections';
 import { Evaluation, EvaluationStatus, Questionnaire, Section } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function EvaluationsPage() {
-  const { data: evaluations, isLoading } = useEvaluations();
+  const queryClient = useQueryClient();
+  const {
+    data: evaluations,
+    isLoading,
+    refetch: refetchEvaluations,
+  } = useEvaluations();
   // Mostrar todas las secciones (activas e inactivas) para que los estudiantes vean las bloqueadas
-  const { data: sections } = useSections();
-  const { data: activeQuestionnaires } = useActiveQuestionnaires(); // Obtener todos los cuestionarios activos
+  const { data: sections, refetch: refetchSections } = useSections();
+  const { data: activeQuestionnaires, refetch: refetchQuestionnaires } =
+    useActiveQuestionnaires(); // Obtener todos los cuestionarios activos
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Invalidar y refetch todas las queries relacionadas
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['evaluations'] }),
+        queryClient.invalidateQueries({ queryKey: ['sections'] }),
+        queryClient.invalidateQueries({ queryKey: ['questionnaires'] }),
+        refetchEvaluations(),
+        refetchSections(),
+        refetchQuestionnaires(),
+      ]);
+    } catch (error) {
+      console.error('Error al actualizar datos:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -89,6 +117,20 @@ export default function EvaluationsPage() {
       questionnaireId?: string | Questionnaire | null;
     }
   ) => {
+    // Primero verificar que la evaluación tenga una sección válida
+    const sectionId = getSectionId(evaluation.sectionId);
+    if (!sectionId) {
+      return 'Evaluación no disponible'; // Si no hay sección válida
+    }
+
+    // Verificar que la sección existe
+    const sectionExists = sections?.some(
+      (s) => String(s._id) === String(sectionId)
+    );
+    if (!sectionExists) {
+      return 'Evaluación no disponible'; // Si la sección fue eliminada
+    }
+
     // Si la evaluación tiene questionnaireId poblado
     if (evaluation.questionnaireId) {
       if (
@@ -104,7 +146,6 @@ export default function EvaluationsPage() {
       return questionnaire?.title || 'Cuestionario';
     }
     // Si no tiene questionnaireId, buscar el primer cuestionario activo de la sección
-    const sectionId = getSectionId(evaluation.sectionId);
     const questionnaire = activeQuestionnaires?.find((q) => {
       const qSectionId = getQuestionnaireSectionId(q.sectionId);
       return String(qSectionId) === String(sectionId);
@@ -112,20 +153,65 @@ export default function EvaluationsPage() {
     return questionnaire?.title || getSectionName(evaluation.sectionId);
   };
 
+  // Función auxiliar para verificar si una evaluación tiene una sección válida
+  const hasValidSection = (evaluation: Evaluation) => {
+    // Si no hay sectionId o es null, la evaluación no es válida
+    if (!evaluation.sectionId) {
+      return false;
+    }
+
+    const sectionId = getEvaluationSectionId(evaluation.sectionId);
+    if (!sectionId) {
+      return false; // Si no se puede obtener el ID, la evaluación no es válida
+    }
+
+    // Verificar que la sección existe en la lista de secciones
+    // Esto es crítico: si la sección fue eliminada, no estará en la lista
+    const sectionExists =
+      sections?.some((s) => String(s._id) === String(sectionId)) ?? false;
+
+    if (!sectionExists) {
+      // La sección no existe, probablemente fue eliminada
+      return false;
+    }
+
+    return true;
+  };
+
+  // Solo filtrar evaluaciones si las secciones ya se cargaron
+  // Esto evita mostrar evaluaciones de secciones eliminadas
+  const validEvaluations =
+    sections && sections.length > 0
+      ? evaluations?.filter(hasValidSection) || []
+      : []; // Si no hay secciones cargadas, no mostrar evaluaciones
+
   const pendingEvaluations =
-    evaluations?.filter((e) => e.status === EvaluationStatus.PENDING) || [];
+    validEvaluations.filter((e) => e.status === EvaluationStatus.PENDING) || [];
   const inProgressEvaluations =
-    evaluations?.filter((e) => e.status === EvaluationStatus.IN_PROGRESS) || [];
+    validEvaluations.filter((e) => e.status === EvaluationStatus.IN_PROGRESS) ||
+    [];
   const completedEvaluations =
-    evaluations?.filter((e) => e.status === EvaluationStatus.COMPLETED) || [];
+    validEvaluations.filter((e) => e.status === EvaluationStatus.COMPLETED) ||
+    [];
 
   return (
     <div className='space-y-6'>
-      <div>
-        <h1 className='text-3xl font-bold text-gray-900'>Mis Evaluaciones</h1>
-        <p className='mt-2 text-gray-600'>
-          Gestiona tus evaluaciones de autoevaluación
-        </p>
+      <div className='flex justify-between items-start'>
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Mis Evaluaciones</h1>
+          <p className='mt-2 text-gray-600'>
+            Gestiona tus evaluaciones de autoevaluación
+          </p>
+        </div>
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          variant='outline'
+          className='flex items-center gap-2'
+        >
+          <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
+          {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+        </Button>
       </div>
 
       {pendingEvaluations.length > 0 && (

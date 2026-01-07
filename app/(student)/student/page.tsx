@@ -6,7 +6,7 @@ import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useActiveSections } from '@/hooks/use-sections';
-import { EvaluationStatus } from '@/types';
+import { EvaluationStatus, Section } from '@/types';
 import Link from 'next/link';
 
 export default function StudentDashboardPage() {
@@ -18,15 +18,58 @@ export default function StudentDashboardPage() {
   const isLoading =
     evaluationsLoading || sectionsLoading || questionnairesLoading;
 
+  // Función auxiliar para obtener el ID de sectionId de forma segura
+  const getEvaluationSectionId = (
+    sectionId: string | Section | null | undefined
+  ) => {
+    if (!sectionId || sectionId === null) {
+      return null;
+    }
+    if (typeof sectionId === 'object' && sectionId !== null) {
+      return sectionId?._id || null;
+    }
+    return sectionId;
+  };
+
+  // Función auxiliar para verificar si una evaluación tiene una sección válida
+  const hasValidSection = (evaluation: {
+    sectionId?: string | Section | null;
+  }) => {
+    // Si no hay sectionId o es null, la evaluación no es válida
+    if (!evaluation.sectionId) {
+      return false;
+    }
+
+    const sectionId = getEvaluationSectionId(evaluation.sectionId);
+    if (!sectionId) {
+      return false; // Si no se puede obtener el ID, la evaluación no es válida
+    }
+
+    // Verificar que la sección existe en la lista de secciones
+    // Esto es crítico: si la sección fue eliminada, no estará en la lista
+    const sectionExists =
+      sections?.some((s) => String(s._id) === String(sectionId)) ?? false;
+
+    if (!sectionExists) {
+      // La sección no existe, probablemente fue eliminada
+      return false;
+    }
+
+    return true;
+  };
+
+  // Filtrar evaluaciones para mostrar solo las que tienen secciones válidas
+  const validEvaluations = evaluations?.filter(hasValidSection) || [];
+
   const stats = {
     pending:
-      evaluations?.filter((e) => e.status === EvaluationStatus.PENDING)
+      validEvaluations.filter((e) => e.status === EvaluationStatus.PENDING)
         .length || 0,
     inProgress:
-      evaluations?.filter((e) => e.status === EvaluationStatus.IN_PROGRESS)
+      validEvaluations.filter((e) => e.status === EvaluationStatus.IN_PROGRESS)
         .length || 0,
     completed:
-      evaluations?.filter((e) => e.status === EvaluationStatus.COMPLETED)
+      validEvaluations.filter((e) => e.status === EvaluationStatus.COMPLETED)
         .length || 0,
   };
 
@@ -49,7 +92,7 @@ export default function StudentDashboardPage() {
       }
 
       // Verificar si este cuestionario tiene evaluación completada
-      const hasCompletedEvaluation = evaluations?.some((e) => {
+      const hasCompletedEvaluation = validEvaluations.some((e) => {
         // Verificar que e.sectionId y e.questionnaireId no sean null
         if (!e.sectionId || !e.questionnaireId) {
           return false;
@@ -156,7 +199,7 @@ export default function StudentDashboardPage() {
                           (s) => s._id === questionnaire.sectionId
                         );
 
-                  const evaluation = evaluations?.find((e) => {
+                  const evaluation = validEvaluations.find((e) => {
                     // Verificar que e.sectionId y e.questionnaireId no sean null
                     if (!e.sectionId || !e.questionnaireId) {
                       return false;
@@ -232,13 +275,13 @@ export default function StudentDashboardPage() {
             )}
           </Card>
 
-          {evaluations && evaluations.length > 0 && (
+          {validEvaluations && validEvaluations.length > 0 && (
             <Card className='p-6'>
               <h2 className='text-xl font-semibold text-gray-900 mb-4'>
                 Mis Evaluaciones
               </h2>
               <div className='space-y-3'>
-                {evaluations.map((evaluation) => {
+                {validEvaluations.map((evaluation) => {
                   const section =
                     typeof evaluation.sectionId === 'object'
                       ? evaluation.sectionId

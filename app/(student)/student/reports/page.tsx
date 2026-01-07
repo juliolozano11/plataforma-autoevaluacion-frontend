@@ -5,10 +5,29 @@ import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { EvaluationStatus } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function StudentReportsPage() {
-  const { data: evaluations, isLoading } = useEvaluations();
+  const queryClient = useQueryClient();
+  const { data: evaluations, isLoading, refetch: refetchEvaluations } = useEvaluations();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Invalidar y refetch las queries relacionadas
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['evaluations'] }),
+        refetchEvaluations(),
+      ]);
+    } catch (error) {
+      console.error('Error al actualizar datos:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -25,11 +44,22 @@ export default function StudentReportsPage() {
 
   return (
     <div className='space-y-6'>
-      <div>
-        <h1 className='text-3xl font-bold text-gray-900'>Mis Resultados</h1>
-        <p className='mt-2 text-gray-600'>
-          Visualiza los resultados de tus evaluaciones completadas
-        </p>
+      <div className='flex justify-between items-start'>
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Mis Resultados</h1>
+          <p className='mt-2 text-gray-600'>
+            Visualiza los resultados de tus evaluaciones completadas
+          </p>
+        </div>
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          variant='outline'
+          className='flex items-center gap-2'
+        >
+          <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
+          {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+        </Button>
       </div>
 
       {completedEvaluations.length === 0 ? (
