@@ -6,7 +6,7 @@ import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useSections } from '@/hooks/use-sections';
-import { EvaluationStatus, Section } from '@/types';
+import { Evaluation, EvaluationStatus, Questionnaire, Section } from '@/types';
 import Link from 'next/link';
 
 export default function EvaluationsPage() {
@@ -23,25 +23,78 @@ export default function EvaluationsPage() {
     );
   }
 
-  const getSectionName = (sectionId: string | Section) => {
+  const getSectionName = (sectionId: string | Section | null | undefined) => {
+    if (!sectionId) {
+      return 'Sección';
+    }
     if (typeof sectionId === 'object') {
-      return sectionId?.displayName;
+      return sectionId?.displayName || 'Sección';
     }
     return sections?.find((s) => s._id === sectionId)?.displayName || 'Sección';
   };
 
-  const getSectionId = (sectionId: string | Section) => {
-    if (typeof sectionId === 'object') {
-      return sectionId._id;
+  const getSectionId = (sectionId: string | Section | null | undefined) => {
+    if (!sectionId) {
+      return null;
+    }
+    if (typeof sectionId === 'object' && sectionId !== null) {
+      return sectionId?._id || null;
+    }
+    return sectionId;
+  };
+
+  // Función auxiliar para obtener el ID de questionnaireId de forma segura
+  const getQuestionnaireId = (
+    questionnaireId: string | Questionnaire | null | undefined
+  ) => {
+    if (!questionnaireId) {
+      return null;
+    }
+    if (typeof questionnaireId === 'object' && questionnaireId !== null) {
+      return questionnaireId?._id || null;
+    }
+    return questionnaireId;
+  };
+
+  // Función auxiliar para obtener el ID de sectionId de forma segura (para evaluaciones)
+  const getEvaluationSectionId = (
+    sectionId: string | Section | null | undefined
+  ) => {
+    if (!sectionId || sectionId === null) {
+      return null;
+    }
+    if (typeof sectionId === 'object' && sectionId !== null) {
+      return sectionId?._id || null;
+    }
+    return sectionId;
+  };
+
+  // Función auxiliar para obtener el ID de sectionId de cuestionarios de forma segura
+  const getQuestionnaireSectionId = (
+    sectionId: string | Section | null | undefined
+  ) => {
+    if (!sectionId || sectionId === null) {
+      return null;
+    }
+    if (typeof sectionId === 'object' && sectionId !== null) {
+      return sectionId?._id || null;
     }
     return sectionId;
   };
 
   // Función para obtener el nombre del cuestionario de una evaluación
-  const getQuestionnaireName = (evaluation: any) => {
+  const getQuestionnaireName = (
+    evaluation: Partial<Evaluation> & {
+      sectionId?: string | Section | null;
+      questionnaireId?: string | Questionnaire | null;
+    }
+  ) => {
     // Si la evaluación tiene questionnaireId poblado
     if (evaluation.questionnaireId) {
-      if (typeof evaluation.questionnaireId === 'object') {
+      if (
+        typeof evaluation.questionnaireId === 'object' &&
+        evaluation.questionnaireId !== null
+      ) {
         return evaluation.questionnaireId.title || 'Cuestionario';
       }
       // Si es un string, buscar en activeQuestionnaires
@@ -53,8 +106,7 @@ export default function EvaluationsPage() {
     // Si no tiene questionnaireId, buscar el primer cuestionario activo de la sección
     const sectionId = getSectionId(evaluation.sectionId);
     const questionnaire = activeQuestionnaires?.find((q) => {
-      const qSectionId =
-        typeof q.sectionId === 'object' ? q.sectionId?._id : q.sectionId;
+      const qSectionId = getQuestionnaireSectionId(q.sectionId);
       return String(qSectionId) === String(sectionId);
     });
     return questionnaire?.title || getSectionName(evaluation.sectionId);
@@ -116,7 +168,7 @@ export default function EvaluationsPage() {
                         </p>
                       )}
                     </div>
-                    {isBlocked ? (
+                    {isBlocked || !sectionId ? (
                       <Button disabled variant='outline'>
                         Bloqueada
                       </Button>
@@ -159,13 +211,19 @@ export default function EvaluationsPage() {
                       </p>
                     )}
                   </div>
-                  <Link
-                    href={`/student/evaluations/${getSectionId(
-                      evaluation.sectionId
-                    )}`}
-                  >
-                    <Button>Continuar</Button>
-                  </Link>
+                  {getSectionId(evaluation.sectionId) ? (
+                    <Link
+                      href={`/student/evaluations/${getSectionId(
+                        evaluation.sectionId
+                      )}`}
+                    >
+                      <Button>Continuar</Button>
+                    </Link>
+                  ) : (
+                    <Button disabled variant='outline'>
+                      No disponible
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}
@@ -233,11 +291,10 @@ export default function EvaluationsPage() {
                 // Obtener los cuestionarios activos de esta sección
                 const sectionQuestionnaires =
                   activeQuestionnaires?.filter((q) => {
-                    const qSectionId =
-                      typeof q.sectionId === 'object'
-                        ? q.sectionId?._id
-                        : q.sectionId;
-                    return String(qSectionId) === String(section._id);
+                    const qSectionId = getQuestionnaireSectionId(q.sectionId);
+                    return (
+                      qSectionId && String(qSectionId) === String(section._id)
+                    );
                   }) || [];
 
                 // Si no hay cuestionarios activos, no mostrar la sección
@@ -250,14 +307,15 @@ export default function EvaluationsPage() {
                   (questionnaire) => {
                     // Verificar si este cuestionario tiene una evaluación completada
                     const hasCompletedEvaluation = evaluations?.some((e) => {
-                      const evalSectionId =
-                        typeof e.sectionId === 'object'
-                          ? e.sectionId._id
-                          : e.sectionId;
-                      const evalQuestionnaireId =
-                        typeof e.questionnaireId === 'object'
-                          ? e.questionnaireId._id
-                          : e.questionnaireId;
+                      // Verificar que sectionId y questionnaireId no sean null
+                      if (!e.sectionId || !e.questionnaireId) {
+                        return false;
+                      }
+
+                      const evalSectionId = getEvaluationSectionId(e.sectionId);
+                      const evalQuestionnaireId = getQuestionnaireId(
+                        e.questionnaireId
+                      );
 
                       // Comparar por questionnaireId si existe
                       if (evalQuestionnaireId) {
@@ -300,10 +358,12 @@ export default function EvaluationsPage() {
                 // Mostrar la sección solo si tiene al menos un cuestionario disponible
                 // y no tiene evaluaciones pendientes o en progreso
                 const hasPendingOrInProgress = evaluations?.some((e) => {
-                  const evalSectionId =
-                    typeof e.sectionId === 'object'
-                      ? e.sectionId._id
-                      : e.sectionId;
+                  // Verificar que sectionId no sea null
+                  if (!e.sectionId) {
+                    return false;
+                  }
+
+                  const evalSectionId = getEvaluationSectionId(e.sectionId);
                   return (
                     evalSectionId === section._id &&
                     (e.status === EvaluationStatus.PENDING ||
@@ -319,23 +379,25 @@ export default function EvaluationsPage() {
                 const sectionQuestionnaires =
                   activeQuestionnaires
                     ?.filter((q) => {
-                      const qSectionId =
-                        typeof q.sectionId === 'object'
-                          ? q.sectionId?._id
-                          : q.sectionId;
-                      return String(qSectionId) === String(section._id);
+                      const qSectionId = getQuestionnaireSectionId(q.sectionId);
+                      return (
+                        qSectionId && String(qSectionId) === String(section._id)
+                      );
                     })
                     .filter((questionnaire) => {
                       // Filtrar cuestionarios que ya tienen evaluación completada
                       const hasCompletedEvaluation = evaluations?.some((e) => {
-                        const evalQuestionnaireId =
-                          typeof e.questionnaireId === 'object'
-                            ? e.questionnaireId._id
-                            : e.questionnaireId;
-                        const evalSectionId =
-                          typeof e.sectionId === 'object'
-                            ? e.sectionId._id
-                            : e.sectionId;
+                        // Verificar que sectionId y questionnaireId no sean null
+                        if (!e.sectionId || !e.questionnaireId) {
+                          return false;
+                        }
+
+                        const evalQuestionnaireId = getQuestionnaireId(
+                          e.questionnaireId
+                        );
+                        const evalSectionId = getEvaluationSectionId(
+                          e.sectionId
+                        );
 
                         // Comparar por questionnaireId si existe
                         if (evalQuestionnaireId) {
@@ -355,11 +417,13 @@ export default function EvaluationsPage() {
                           const allSectionQuestionnaires =
                             activeQuestionnaires
                               ?.filter((q) => {
-                                const qSecId =
-                                  typeof q.sectionId === 'object'
-                                    ? q.sectionId?._id
-                                    : q.sectionId;
-                                return String(qSecId) === String(section._id);
+                                const qSecId = getQuestionnaireSectionId(
+                                  q.sectionId
+                                );
+                                return (
+                                  qSecId &&
+                                  String(qSecId) === String(section._id)
+                                );
                               })
                               .sort((a, b) => {
                                 const titleA = a.title || '';

@@ -61,8 +61,8 @@ export default function EvaluationPage() {
         typeof e.sectionId === 'object' ? e.sectionId?._id : e.sectionId;
       const evalQuestionnaireId =
         typeof e.questionnaireId === 'object'
-          ? e.questionnaireId._id
-          : e.questionnaireId;
+          ? e.questionnaireId?._id
+          : e?.questionnaireId;
 
       // Buscar por sección Y cuestionario
       return (

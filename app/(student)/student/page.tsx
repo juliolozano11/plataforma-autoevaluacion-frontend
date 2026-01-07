@@ -50,11 +50,16 @@ export default function StudentDashboardPage() {
 
       // Verificar si este cuestionario tiene evaluación completada
       const hasCompletedEvaluation = evaluations?.some((e) => {
+        // Verificar que e.sectionId y e.questionnaireId no sean null
+        if (!e.sectionId || !e.questionnaireId) {
+          return false;
+        }
+
         const evalSectionId =
-          typeof e.sectionId === 'object' ? e.sectionId?._id : e?.sectionId;
+          typeof e.sectionId === 'object' ? e.sectionId?._id : e.sectionId;
         const evalQuestionnaireId =
           typeof e.questionnaireId === 'object'
-            ? e.questionnaireId._id
+            ? e.questionnaireId?._id
             : e.questionnaireId;
 
         return (
@@ -152,13 +157,18 @@ export default function StudentDashboardPage() {
                         );
 
                   const evaluation = evaluations?.find((e) => {
+                    // Verificar que e.sectionId y e.questionnaireId no sean null
+                    if (!e.sectionId || !e.questionnaireId) {
+                      return false;
+                    }
+
                     const evalSectionId =
                       typeof e.sectionId === 'object'
-                        ? e.sectionId._id
+                        ? e.sectionId?._id
                         : e.sectionId;
                     const evalQuestionnaireId =
                       typeof e.questionnaireId === 'object'
-                        ? e.questionnaireId._id
+                        ? e.questionnaireId?._id
                         : e.questionnaireId;
                     return (
                       String(evalSectionId) === String(section?._id) &&
