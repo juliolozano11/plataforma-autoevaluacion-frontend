@@ -6,7 +6,13 @@ import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useSections } from '@/hooks/use-sections';
-import { Evaluation, EvaluationStatus, Questionnaire, Section } from '@/types';
+import {
+  Evaluation,
+  EvaluationStatus,
+  Questionnaire,
+  Section,
+  SectionName,
+} from '@/types';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -59,6 +65,69 @@ export default function EvaluationsPage() {
       return sectionId?.displayName || 'Sección';
     }
     return sections?.find((s) => s._id === sectionId)?.displayName || 'Sección';
+  };
+
+  // Función para obtener el tipo de competencia de una sección
+  const getSectionTypeLabel = (
+    sectionId: string | Section | null | undefined
+  ) => {
+    if (!sectionId) {
+      return '';
+    }
+    let section: Section | undefined;
+    if (typeof sectionId === 'object') {
+      section = sectionId;
+    } else {
+      section = sections?.find((s) => s._id === sectionId);
+    }
+    if (!section) {
+      return '';
+    }
+    switch (section.name) {
+      case SectionName.BLANDAS:
+        return 'Competencias Blandas';
+      case SectionName.ADAPTATIVAS:
+        return 'Competencias Adaptativas';
+      case SectionName.TECNOLOGICAS:
+        return 'Competencias Tecnológicas';
+      default:
+        return '';
+    }
+  };
+
+  // Función para obtener el cuestionario completo
+  const getQuestionnaire = (
+    evaluation: Partial<Evaluation> & {
+      sectionId?: string | Section | null;
+      questionnaireId?: string | Questionnaire | null;
+    }
+  ): Questionnaire | null => {
+    // Si la evaluación tiene questionnaireId poblado
+    if (evaluation.questionnaireId) {
+      if (
+        typeof evaluation.questionnaireId === 'object' &&
+        evaluation.questionnaireId !== null
+      ) {
+        return evaluation.questionnaireId;
+      }
+      // Si es un string, buscar en activeQuestionnaires
+      return (
+        activeQuestionnaires?.find(
+          (q) => q._id === evaluation.questionnaireId
+        ) || null
+      );
+    }
+    // Si no tiene questionnaireId, buscar el primer cuestionario activo de la sección
+    const sectionId = getSectionId(evaluation.sectionId);
+    if (!sectionId) {
+      return null;
+    }
+    return (
+      activeQuestionnaires?.find((q) => {
+        const qSectionId = getQuestionnaireSectionId(q.sectionId);
+        return String(qSectionId) === String(sectionId);
+      }) || null
+    );
   };
 
   const getSectionId = (sectionId: string | Section | null | undefined) => {
@@ -185,13 +254,31 @@ export default function EvaluationsPage() {
       ? evaluations?.filter(hasValidSection) || []
       : []; // Si no hay secciones cargadas, no mostrar evaluaciones
 
+  // Debug temporal para entender el problema
+  if (typeof window !== 'undefined') {
+    console.log('🔍 Debug Evaluaciones:', {
+      totalEvaluations: evaluations?.length || 0,
+      totalSections: sections?.length || 0,
+      validEvaluations: validEvaluations.length,
+      inProgress: validEvaluations.filter(
+        (e) => e.status === EvaluationStatus.IN_PROGRESS
+      ).length,
+      completed: validEvaluations.filter(
+        (e) => e.status === EvaluationStatus.COMPLETED
+      ).length,
+      sectionIds: sections?.map((s) => s._id) || [],
+      evaluationSectionIds:
+        evaluations?.map((e) => {
+          const id = getEvaluationSectionId(e.sectionId);
+          return id;
+        }) || [],
+    });
+  }
+
   const pendingEvaluations =
     validEvaluations.filter((e) => e.status === EvaluationStatus.PENDING) || [];
   const inProgressEvaluations =
     validEvaluations.filter((e) => e.status === EvaluationStatus.IN_PROGRESS) ||
-    [];
-  const completedEvaluations =
-    validEvaluations.filter((e) => e.status === EvaluationStatus.COMPLETED) ||
     [];
 
   return (
@@ -212,6 +299,274 @@ export default function EvaluationsPage() {
           <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
           {isRefreshing ? 'Actualizando...' : 'Actualizar'}
         </Button>
+      </div>
+
+      {/* Mostrar secciones sin evaluaciones pero que existen */}
+      <div>
+        <h2 className='text-xl font-semibold text-gray-900 mb-4'>
+          Evaluaciones Disponibles
+        </h2>
+        {sections && sections.length > 0 ? (
+          <div className='grid grid-cols-1 gap-4'>
+            {(() => {
+              const availableCards = sections
+                .filter((section) => {
+                  // Obtener los cuestionarios activos de esta sección
+                  const sectionQuestionnaires =
+                    activeQuestionnaires?.filter((q) => {
+                      const qSectionId = getQuestionnaireSectionId(q.sectionId);
+                      return (
+                        qSectionId && String(qSectionId) === String(section._id)
+                      );
+                    }) || [];
+
+                  // Si no hay cuestionarios activos, no mostrar la sección
+                  if (sectionQuestionnaires.length === 0) {
+                    return false;
+                  }
+
+                  // Verificar si hay algún cuestionario de esta sección que NO tenga evaluación completada
+                  const hasAvailableQuestionnaire = sectionQuestionnaires.some(
+                    (questionnaire) => {
+                      // Verificar si este cuestionario tiene una evaluación completada
+                      const hasCompletedEvaluation = evaluations?.some((e) => {
+                        // Verificar que sectionId y questionnaireId no sean null
+                        if (!e.sectionId || !e.questionnaireId) {
+                          return false;
+                        }
+
+                        const evalSectionId = getEvaluationSectionId(
+                          e.sectionId
+                        );
+                        const evalQuestionnaireId = getQuestionnaireId(
+                          e.questionnaireId
+                        );
+
+                        // Comparar por questionnaireId si existe
+                        if (evalQuestionnaireId) {
+                          return (
+                            String(evalQuestionnaireId) ===
+                              String(questionnaire._id) &&
+                            e.status === EvaluationStatus.COMPLETED
+                          );
+                        }
+
+                        // Si no tiene questionnaireId, comparar por sectionId y verificar si es el primer cuestionario
+                        if (String(evalSectionId) === String(section._id)) {
+                          // Si es el primer cuestionario de la sección y la evaluación está completada
+                          const sortedQuestionnaires =
+                            sectionQuestionnaires.sort((a, b) => {
+                              const titleA = a.title || '';
+                              const titleB = b.title || '';
+                              return titleA.localeCompare(titleB);
+                            });
+
+                          if (
+                            sortedQuestionnaires.length > 0 &&
+                            String(sortedQuestionnaires[0]._id) ===
+                              String(questionnaire._id) &&
+                            e.status === EvaluationStatus.COMPLETED
+                          ) {
+                            return true;
+                          }
+                        }
+
+                        return false;
+                      });
+
+                      // Si no tiene evaluación completada, este cuestionario está disponible
+                      return !hasCompletedEvaluation;
+                    }
+                  );
+
+                  // Mostrar la sección solo si tiene al menos un cuestionario disponible
+                  // y no tiene evaluaciones pendientes o en progreso
+                  const hasPendingOrInProgress = evaluations?.some((e) => {
+                    // Verificar que sectionId no sea null
+                    if (!e.sectionId) {
+                      return false;
+                    }
+
+                    const evalSectionId = getEvaluationSectionId(e.sectionId);
+                    return (
+                      evalSectionId === section._id &&
+                      (e.status === EvaluationStatus.PENDING ||
+                        e.status === EvaluationStatus.IN_PROGRESS)
+                    );
+                  });
+
+                  return hasAvailableQuestionnaire && !hasPendingOrInProgress;
+                })
+                .map((section) => {
+                  const isBlocked = !section.isActive;
+                  // Obtener los cuestionarios activos de esta sección que NO están completados
+                  const sectionQuestionnaires =
+                    activeQuestionnaires
+                      ?.filter((q) => {
+                        const qSectionId = getQuestionnaireSectionId(
+                          q.sectionId
+                        );
+                        return (
+                          qSectionId &&
+                          String(qSectionId) === String(section._id)
+                        );
+                      })
+                      .filter((questionnaire) => {
+                        // Filtrar cuestionarios que ya tienen evaluación completada
+                        const hasCompletedEvaluation = evaluations?.some(
+                          (e) => {
+                            // Verificar que sectionId y questionnaireId no sean null
+                            if (!e.sectionId || !e.questionnaireId) {
+                              return false;
+                            }
+
+                            const evalQuestionnaireId = getQuestionnaireId(
+                              e.questionnaireId
+                            );
+                            const evalSectionId = getEvaluationSectionId(
+                              e.sectionId
+                            );
+
+                            // Comparar por questionnaireId si existe
+                            if (evalQuestionnaireId) {
+                              return (
+                                String(evalQuestionnaireId) ===
+                                  String(questionnaire._id) &&
+                                e.status === EvaluationStatus.COMPLETED
+                              );
+                            }
+
+                            // Si no tiene questionnaireId, comparar por sectionId
+                            if (
+                              String(evalSectionId) === String(section._id) &&
+                              e.status === EvaluationStatus.COMPLETED
+                            ) {
+                              // Verificar si este es el primer cuestionario de la sección
+                              const allSectionQuestionnaires =
+                                activeQuestionnaires
+                                  ?.filter((q) => {
+                                    const qSecId = getQuestionnaireSectionId(
+                                      q.sectionId
+                                    );
+                                    return (
+                                      qSecId &&
+                                      String(qSecId) === String(section._id)
+                                    );
+                                  })
+                                  .sort((a, b) => {
+                                    const titleA = a.title || '';
+                                    const titleB = b.title || '';
+                                    return titleA.localeCompare(titleB);
+                                  }) || [];
+
+                              if (allSectionQuestionnaires.length > 0) {
+                                return (
+                                  String(allSectionQuestionnaires[0]._id) ===
+                                  String(questionnaire._id)
+                                );
+                              }
+                            }
+
+                            return false;
+                          }
+                        );
+
+                        return !hasCompletedEvaluation;
+                      }) || [];
+
+                  // Si no hay cuestionarios disponibles, no mostrar la sección
+                  if (sectionQuestionnaires.length === 0) {
+                    return null;
+                  }
+
+                  const questionnaire = sectionQuestionnaires[0];
+                  const sectionTypeLabel = getSectionTypeLabel(section._id);
+
+                  return (
+                    <Card
+                      key={section._id}
+                      className={`p-6 ${
+                        isBlocked ? 'opacity-60 bg-gray-50' : ''
+                      }`}
+                    >
+                      <div className='flex items-center justify-between'>
+                        <div className='flex-1'>
+                          <div className='flex items-center gap-3'>
+                            <h3 className='text-lg font-semibold text-gray-900'>
+                              {questionnaire?.title || section.displayName}
+                            </h3>
+                            {isBlocked && (
+                              <span className='px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800'>
+                                Bloqueada
+                              </span>
+                            )}
+                          </div>
+                          <p className='text-sm text-gray-500 mt-1'>
+                            Sección: {section.displayName}
+                            {sectionTypeLabel && (
+                              <> | Tipo: {sectionTypeLabel}</>
+                            )}
+                          </p>
+                          {questionnaire?.createdAt && (
+                            <p className='text-sm text-gray-500'>
+                              Asignada:{' '}
+                              {new Date(
+                                questionnaire.createdAt
+                              ).toLocaleDateString()}
+                            </p>
+                          )}
+                          {questionnaire?.description && (
+                            <p className='text-sm text-gray-500 mt-1'>
+                              {questionnaire.description}
+                            </p>
+                          )}
+                          {!questionnaire?.description &&
+                            section.description && (
+                              <p className='text-sm text-gray-500 mt-1'>
+                                {section.description}
+                              </p>
+                            )}
+                          {isBlocked && (
+                            <p className='text-sm text-red-600 mt-1'>
+                              Esta evaluación no está disponible en este momento
+                            </p>
+                          )}
+                        </div>
+                        {isBlocked ? (
+                          <Button disabled variant='outline'>
+                            Bloqueada
+                          </Button>
+                        ) : (
+                          <Link href={`/student/evaluations/${section._id}`}>
+                            <Button>Comenzar</Button>
+                          </Link>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })
+                .filter((card) => card !== null);
+
+              if (availableCards.length === 0) {
+                return (
+                  <Card className='p-6 text-center'>
+                    <p className='text-gray-500'>
+                      No hay nuevas evaluaciones para comenzar en este momento
+                    </p>
+                  </Card>
+                );
+              }
+
+              return availableCards;
+            })()}
+          </div>
+        ) : (
+          <Card className='p-6 text-center'>
+            <p className='text-gray-500'>
+              No hay nuevas evaluaciones para comenzar en este momento
+            </p>
+          </Card>
+        )}
       </div>
 
       {pendingEvaluations.length > 0 && (
@@ -271,329 +626,90 @@ export default function EvaluationsPage() {
         </div>
       )}
 
-      {inProgressEvaluations.length > 0 && (
-        <div>
-          <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-            Evaluaciones en Progreso
-          </h2>
+      <div>
+        <h2 className='text-xl font-semibold text-gray-900 mb-4'>
+          Evaluaciones en Progreso
+        </h2>
+        {inProgressEvaluations.length > 0 ? (
           <div className='grid grid-cols-1 gap-4'>
-            {inProgressEvaluations.map((evaluation) => (
-              <Card key={evaluation._id} className='p-6'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <h3 className='text-lg font-semibold text-gray-900'>
-                      {getQuestionnaireName(evaluation)}
-                    </h3>
-                    <p className='text-sm text-gray-500 mt-1'>
-                      {getSectionName(evaluation.sectionId)}
-                    </p>
-                    <p className='text-sm text-gray-500 mt-1'>
-                      Estado: En Progreso
-                    </p>
-                    {evaluation.startedAt && (
+            {inProgressEvaluations.map((evaluation) => {
+              const questionnaire = getQuestionnaire(evaluation);
+              const sectionTypeLabel = getSectionTypeLabel(
+                evaluation.sectionId
+              );
+
+              return (
+                <Card key={evaluation._id} className='p-6'>
+                  <div className='flex items-center justify-between'>
+                    <div>
+                      <h3 className='text-lg font-semibold text-gray-900'>
+                        {getQuestionnaireName(evaluation)}
+                      </h3>
+                      <p className='text-sm text-gray-500 mt-1'>
+                        Sección: {getSectionName(evaluation.sectionId)}
+                        {sectionTypeLabel && <> | Tipo: {sectionTypeLabel}</>}
+                      </p>
+                      <p className='text-sm text-gray-500 mt-1'>
+                        Estado: En Progreso
+                      </p>
                       <p className='text-sm text-gray-500'>
-                        Iniciada:{' '}
-                        {new Date(evaluation.startedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  {getSectionId(evaluation.sectionId) ? (
-                    <Link
-                      href={`/student/evaluations/${getSectionId(
-                        evaluation.sectionId
-                      )}`}
-                    >
-                      <Button>Continuar</Button>
-                    </Link>
-                  ) : (
-                    <Button disabled variant='outline'>
-                      No disponible
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {completedEvaluations.length > 0 && (
-        <div>
-          <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-            Evaluaciones Completadas
-          </h2>
-          <div className='grid grid-cols-1 gap-4'>
-            {completedEvaluations.map((evaluation) => (
-              <Card key={evaluation._id} className='p-6'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <h3 className='text-lg font-semibold text-gray-900'>
-                      {getQuestionnaireName(evaluation)}
-                    </h3>
-                    <p className='text-sm text-gray-500 mt-1'>
-                      {getSectionName(evaluation.sectionId)}
-                    </p>
-                    <p className='text-sm text-gray-500 mt-1'>
-                      Estado: Completada
-                    </p>
-                    {evaluation.level && (
-                      <p className='text-sm font-medium text-indigo-600 mt-1'>
-                        Nivel: {evaluation.level}
-                      </p>
-                    )}
-                    {evaluation.totalScore !== undefined &&
-                      evaluation.maxScore !== undefined && (
-                        <p className='text-sm text-gray-500 mt-1'>
-                          Puntuación: {Number(evaluation.totalScore).toFixed(2)}{' '}
-                          / {Number(evaluation.maxScore).toFixed(2)}
-                        </p>
-                      )}
-                    {evaluation.completedAt && (
-                      <p className='text-sm text-gray-500'>
-                        Completada:{' '}
-                        {new Date(evaluation.completedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <Link href={`/student/reports/${evaluation._id}`}>
-                    <Button variant='outline'>Ver Resultados</Button>
-                  </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Mostrar secciones sin evaluaciones pero que existen */}
-      {sections && sections.length > 0 && (
-        <div>
-          <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-            Secciones Disponibles
-          </h2>
-          <div className='grid grid-cols-1 gap-4'>
-            {sections
-              .filter((section) => {
-                // Obtener los cuestionarios activos de esta sección
-                const sectionQuestionnaires =
-                  activeQuestionnaires?.filter((q) => {
-                    const qSectionId = getQuestionnaireSectionId(q.sectionId);
-                    return (
-                      qSectionId && String(qSectionId) === String(section._id)
-                    );
-                  }) || [];
-
-                // Si no hay cuestionarios activos, no mostrar la sección
-                if (sectionQuestionnaires.length === 0) {
-                  return false;
-                }
-
-                // Verificar si hay algún cuestionario de esta sección que NO tenga evaluación completada
-                const hasAvailableQuestionnaire = sectionQuestionnaires.some(
-                  (questionnaire) => {
-                    // Verificar si este cuestionario tiene una evaluación completada
-                    const hasCompletedEvaluation = evaluations?.some((e) => {
-                      // Verificar que sectionId y questionnaireId no sean null
-                      if (!e.sectionId || !e.questionnaireId) {
-                        return false;
-                      }
-
-                      const evalSectionId = getEvaluationSectionId(e.sectionId);
-                      const evalQuestionnaireId = getQuestionnaireId(
-                        e.questionnaireId
-                      );
-
-                      // Comparar por questionnaireId si existe
-                      if (evalQuestionnaireId) {
-                        return (
-                          String(evalQuestionnaireId) ===
-                            String(questionnaire._id) &&
-                          e.status === EvaluationStatus.COMPLETED
-                        );
-                      }
-
-                      // Si no tiene questionnaireId, comparar por sectionId y verificar si es el primer cuestionario
-                      if (String(evalSectionId) === String(section._id)) {
-                        // Si es el primer cuestionario de la sección y la evaluación está completada
-                        const sortedQuestionnaires = sectionQuestionnaires.sort(
-                          (a, b) => {
-                            const titleA = a.title || '';
-                            const titleB = b.title || '';
-                            return titleA.localeCompare(titleB);
-                          }
-                        );
-
-                        if (
-                          sortedQuestionnaires.length > 0 &&
-                          String(sortedQuestionnaires[0]._id) ===
-                            String(questionnaire._id) &&
-                          e.status === EvaluationStatus.COMPLETED
-                        ) {
-                          return true;
-                        }
-                      }
-
-                      return false;
-                    });
-
-                    // Si no tiene evaluación completada, este cuestionario está disponible
-                    return !hasCompletedEvaluation;
-                  }
-                );
-
-                // Mostrar la sección solo si tiene al menos un cuestionario disponible
-                // y no tiene evaluaciones pendientes o en progreso
-                const hasPendingOrInProgress = evaluations?.some((e) => {
-                  // Verificar que sectionId no sea null
-                  if (!e.sectionId) {
-                    return false;
-                  }
-
-                  const evalSectionId = getEvaluationSectionId(e.sectionId);
-                  return (
-                    evalSectionId === section._id &&
-                    (e.status === EvaluationStatus.PENDING ||
-                      e.status === EvaluationStatus.IN_PROGRESS)
-                  );
-                });
-
-                return hasAvailableQuestionnaire && !hasPendingOrInProgress;
-              })
-              .map((section) => {
-                const isBlocked = !section.isActive;
-                // Obtener los cuestionarios activos de esta sección que NO están completados
-                const sectionQuestionnaires =
-                  activeQuestionnaires
-                    ?.filter((q) => {
-                      const qSectionId = getQuestionnaireSectionId(q.sectionId);
-                      return (
-                        qSectionId && String(qSectionId) === String(section._id)
-                      );
-                    })
-                    .filter((questionnaire) => {
-                      // Filtrar cuestionarios que ya tienen evaluación completada
-                      const hasCompletedEvaluation = evaluations?.some((e) => {
-                        // Verificar que sectionId y questionnaireId no sean null
-                        if (!e.sectionId || !e.questionnaireId) {
-                          return false;
-                        }
-
-                        const evalQuestionnaireId = getQuestionnaireId(
-                          e.questionnaireId
-                        );
-                        const evalSectionId = getEvaluationSectionId(
-                          e.sectionId
-                        );
-
-                        // Comparar por questionnaireId si existe
-                        if (evalQuestionnaireId) {
-                          return (
-                            String(evalQuestionnaireId) ===
-                              String(questionnaire._id) &&
-                            e.status === EvaluationStatus.COMPLETED
-                          );
-                        }
-
-                        // Si no tiene questionnaireId, comparar por sectionId
-                        if (
-                          String(evalSectionId) === String(section._id) &&
-                          e.status === EvaluationStatus.COMPLETED
-                        ) {
-                          // Verificar si este es el primer cuestionario de la sección
-                          const allSectionQuestionnaires =
-                            activeQuestionnaires
-                              ?.filter((q) => {
-                                const qSecId = getQuestionnaireSectionId(
-                                  q.sectionId
-                                );
-                                return (
-                                  qSecId &&
-                                  String(qSecId) === String(section._id)
-                                );
-                              })
-                              .sort((a, b) => {
-                                const titleA = a.title || '';
-                                const titleB = b.title || '';
-                                return titleA.localeCompare(titleB);
-                              }) || [];
-
-                          if (allSectionQuestionnaires.length > 0) {
-                            return (
-                              String(allSectionQuestionnaires[0]._id) ===
-                              String(questionnaire._id)
-                            );
-                          }
-                        }
-
-                        return false;
-                      });
-
-                      return !hasCompletedEvaluation;
-                    }) || [];
-
-                // Si no hay cuestionarios disponibles, no mostrar la sección
-                if (sectionQuestionnaires.length === 0) {
-                  return null;
-                }
-
-                return (
-                  <Card
-                    key={section._id}
-                    className={`p-6 ${
-                      isBlocked ? 'opacity-60 bg-gray-50' : ''
-                    }`}
-                  >
-                    <div className='flex items-center justify-between'>
-                      <div className='flex-1'>
-                        <div className='flex items-center gap-3'>
-                          <h3 className='text-lg font-semibold text-gray-900'>
-                            {sectionQuestionnaires.length > 0
-                              ? sectionQuestionnaires[0].title
-                              : section.displayName}
-                          </h3>
-                          {isBlocked && (
-                            <span className='px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800'>
-                              Bloqueada
-                            </span>
-                          )}
-                        </div>
-                        <p className='text-sm text-gray-500 mt-1'>
-                          {section.displayName}
-                        </p>
-                        {sectionQuestionnaires[0]?.description && (
-                          <p className='text-sm text-gray-500 mt-1'>
-                            {sectionQuestionnaires[0].description}
-                          </p>
+                        {questionnaire?.createdAt && (
+                          <>
+                            Asignada:{' '}
+                            {new Date(
+                              questionnaire.createdAt
+                            ).toLocaleDateString()}
+                          </>
                         )}
-                        {!sectionQuestionnaires[0]?.description &&
-                          section.description && (
-                            <p className='text-sm text-gray-500 mt-1'>
-                              {section.description}
-                            </p>
-                          )}
-                        {isBlocked && (
-                          <p className='text-sm text-red-600 mt-1'>
-                            Esta evaluación no está disponible en este momento
-                          </p>
+                        {questionnaire?.createdAt && evaluation.startedAt && (
+                          <> | </>
                         )}
-                      </div>
-                      {isBlocked ? (
-                        <Button disabled variant='outline'>
-                          Bloqueada
-                        </Button>
-                      ) : (
-                        <Link href={`/student/evaluations/${section._id}`}>
-                          <Button>Comenzar</Button>
-                        </Link>
-                      )}
+                        {evaluation.startedAt && (
+                          <>
+                            Iniciada:{' '}
+                            {new Date(
+                              evaluation.startedAt
+                            ).toLocaleDateString()}
+                          </>
+                        )}
+                        {(questionnaire?.createdAt || evaluation.startedAt) &&
+                          evaluation.updatedAt && <> | </>}
+                        {evaluation.updatedAt && (
+                          <>
+                            Última modificación:{' '}
+                            {new Date(
+                              evaluation.updatedAt
+                            ).toLocaleDateString()}
+                          </>
+                        )}
+                      </p>
                     </div>
-                  </Card>
-                );
-              })
-              .filter((card) => card !== null)}
+                    {getSectionId(evaluation.sectionId) ? (
+                      <Link
+                        href={`/student/evaluations/${getSectionId(
+                          evaluation.sectionId
+                        )}`}
+                      >
+                        <Button>Continuar</Button>
+                      </Link>
+                    ) : (
+                      <Button disabled variant='outline'>
+                        No disponible
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-        </div>
-      )}
+        ) : (
+          <Card className='p-6 text-center'>
+            <p className='text-gray-500'>
+              No tienes evaluaciones en progreso en este momento
+            </p>
+          </Card>
+        )}
+      </div>
 
       {(!evaluations || evaluations.length === 0) &&
         (!sections || sections.length === 0) && (

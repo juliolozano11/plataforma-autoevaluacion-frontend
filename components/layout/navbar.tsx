@@ -2,14 +2,40 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserProfile } from './user-profile';
 
 export function Navbar() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   const isAdmin = user?.role === 'admin';
+
+  // Actualizar fecha y hora cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Formatear fecha y hora
+  const formatDateTime = (date: Date) => {
+    const dateStr = date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    const timeStr = date.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    return { date: dateStr, time: timeStr };
+  };
 
   // Solo mostrar enlaces en el navbar para estudiantes
   const studentLinks = [
@@ -27,7 +53,16 @@ export function Navbar() {
               Autoevaluación UG
             </Link>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="font-medium">
+                Fecha: {formatDateTime(currentDateTime).date}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="font-medium">
+                Hora: {formatDateTime(currentDateTime).time}
+              </span>
+            </div>
             <UserProfile />
           </div>
         </div>

@@ -181,189 +181,59 @@ export default function StudentDashboardPage() {
             </Card>
           </div>
 
-          <Card className='p-6'>
-            <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-              Evaluaciones Disponibles
-            </h2>
-            {availableQuestionnaires.length === 0 ? (
-              <p className='text-gray-500 text-sm text-center py-4'>
-                No hay evaluaciones disponibles en este momento
-              </p>
-            ) : (
-              <div className='space-y-4'>
-                {availableQuestionnaires.map((questionnaire) => {
-                  const section =
-                    typeof questionnaire.sectionId === 'object'
-                      ? questionnaire.sectionId
-                      : sections?.find(
-                          (s) => s._id === questionnaire.sectionId
-                        );
-
-                  const evaluation = validEvaluations.find((e) => {
-                    // Verificar que e.sectionId y e.questionnaireId no sean null
-                    if (!e.sectionId || !e.questionnaireId) {
-                      return false;
-                    }
-
-                    const evalSectionId =
-                      typeof e.sectionId === 'object'
-                        ? e.sectionId?._id
-                        : e.sectionId;
-                    const evalQuestionnaireId =
-                      typeof e.questionnaireId === 'object'
-                        ? e.questionnaireId?._id
-                        : e.questionnaireId;
-                    return (
-                      String(evalSectionId) === String(section?._id) &&
-                      String(evalQuestionnaireId) === String(questionnaire._id)
-                    );
-                  });
-
-                  const getStatusText = () => {
-                    if (evaluation?.status === EvaluationStatus.PENDING)
-                      return 'Pendiente';
-                    if (evaluation?.status === EvaluationStatus.IN_PROGRESS)
-                      return 'En Progreso';
-                    return 'Nueva';
-                  };
-
-                  return (
-                    <div
-                      key={questionnaire._id}
-                      className='border border-gray-200 rounded-lg p-4'
-                    >
-                      <div className='flex items-center justify-between'>
-                        <div className='flex-1'>
-                          <h3 className='font-medium text-gray-900'>
-                            {questionnaire.title || 'Cuestionario sin nombre'}
-                          </h3>
-                          <div className='mt-1 space-y-1'>
-                            <p className='text-sm text-gray-600'>
-                              <span className='font-medium'>Sección:</span>{' '}
-                              {section?.displayName || 'Sección'}
-                            </p>
-                            {questionnaire.description && (
-                              <p className='text-sm text-gray-600'>
-                                <span className='font-medium'>
-                                  Competencia:
-                                </span>{' '}
-                                {questionnaire.description}
-                              </p>
-                            )}
-                            <p className='text-sm text-gray-600'>
-                              <span className='font-medium'>Estado:</span>{' '}
-                              {getStatusText()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className='ml-4'>
-                          <Link
-                            href={`/student/evaluations/${
-                              section?._id || questionnaire.sectionId
-                            }`}
-                          >
-                            <Button>
-                              {evaluation ? 'Continuar' : 'Comenzar'}
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-
-          {validEvaluations && validEvaluations.length > 0 && (
-            <Card className='p-6'>
-              <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-                Mis Evaluaciones
-              </h2>
-              <div className='space-y-3'>
-                {validEvaluations.map((evaluation) => {
-                  const section =
-                    typeof evaluation.sectionId === 'object'
-                      ? evaluation.sectionId
-                      : sections?.find((s) => s._id === evaluation.sectionId);
-
-                  const questionnaire =
-                    typeof evaluation.questionnaireId === 'object'
-                      ? evaluation.questionnaireId
-                      : activeQuestionnaires?.find((q) => {
-                          const qId =
-                            typeof q._id === 'string' ? q._id : String(q._id);
-                          const evalQId =
-                            typeof evaluation.questionnaireId === 'string'
-                              ? evaluation.questionnaireId
-                              : String(evaluation.questionnaireId);
-                          return qId === evalQId;
-                        });
-
-                  const getStatusText = () => {
-                    if (evaluation.status === EvaluationStatus.PENDING)
-                      return 'Pendiente';
-                    if (evaluation.status === EvaluationStatus.IN_PROGRESS)
-                      return 'En Progreso';
-                    if (evaluation.status === EvaluationStatus.COMPLETED)
-                      return 'Completada';
-                    return 'Desconocido';
-                  };
-
-                  return (
-                    <div
-                      key={evaluation._id}
-                      className='border border-gray-200 rounded-lg p-4'
-                    >
-                      <div className='flex items-center justify-between'>
-                        <div className='flex-1'>
-                          <h3 className='font-medium text-gray-900'>
-                            {questionnaire?.title || 'Cuestionario sin nombre'}
-                          </h3>
-                          <div className='mt-1 space-y-1'>
-                            <p className='text-sm text-gray-600'>
-                              <span className='font-medium'>Sección:</span>{' '}
-                              {section?.displayName || 'Sección'}
-                            </p>
-                            <p className='text-sm text-gray-600'>
-                              <span className='font-medium'>Estado:</span>{' '}
-                              {getStatusText()}
-                            </p>
-                            {evaluation.level && (
-                              <p className='text-sm text-gray-600'>
-                                <span className='font-medium'>Nivel:</span>{' '}
-                                {evaluation.level}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className='flex gap-2 ml-4'>
-                          {evaluation.status === EvaluationStatus.COMPLETED ? (
-                            <Link href={`/student/reports/${evaluation._id}`}>
-                              <Button variant='outline'>Ver Resultados</Button>
-                            </Link>
-                          ) : (
-                            <Link
-                              href={`/student/evaluations/${
-                                section?._id || evaluation.sectionId
-                              }`}
-                            >
-                              <Button>
-                                {evaluation.status ===
-                                EvaluationStatus.IN_PROGRESS
-                                  ? 'Continuar'
-                                  : 'Comenzar'}
-                              </Button>
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Sección de Competencias */}
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+            {/* Competencias Blandas */}
+            <Card className='p-6 hover:shadow-lg transition-shadow'>
+              <div className='flex flex-col items-center text-center'>
+                <div className='w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4'>
+                  <span className='text-4xl'>🤝</span>
+                </div>
+                <h3 className='text-xl font-semibold text-gray-900 mb-3'>
+                  Competencias Blandas
+                </h3>
+                <p className='text-sm text-gray-600 leading-relaxed'>
+                  Habilidades interpersonales y sociales que te permiten trabajar
+                  eficazmente con otros, comunicarte claramente y adaptarte a
+                  diferentes situaciones del entorno laboral y personal.
+                </p>
               </div>
             </Card>
-          )}
+
+            {/* Competencias Adaptativas */}
+            <Card className='p-6 hover:shadow-lg transition-shadow'>
+              <div className='flex flex-col items-center text-center'>
+                <div className='w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4'>
+                  <span className='text-4xl'>🔄</span>
+                </div>
+                <h3 className='text-xl font-semibold text-gray-900 mb-3'>
+                  Competencias Adaptativas
+                </h3>
+                <p className='text-sm text-gray-600 leading-relaxed'>
+                  Capacidades para ajustarte y responder positivamente a los
+                  cambios, aprender continuamente y mantener la flexibilidad
+                  mental ante nuevas situaciones y desafíos.
+                </p>
+              </div>
+            </Card>
+
+            {/* Competencias Tecnológicas */}
+            <Card className='p-6 hover:shadow-lg transition-shadow'>
+              <div className='flex flex-col items-center text-center'>
+                <div className='w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4'>
+                  <span className='text-4xl'>💻</span>
+                </div>
+                <h3 className='text-xl font-semibold text-gray-900 mb-3'>
+                  Competencias Tecnológicas
+                </h3>
+                <p className='text-sm text-gray-600 leading-relaxed'>
+                  Conocimientos y habilidades para utilizar eficientemente las
+                  herramientas tecnológicas, software y plataformas digitales
+                  necesarias en el ámbito profesional y académico.
+                </p>
+              </div>
+            </Card>
+          </div>
         </>
       )}
     </div>

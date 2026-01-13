@@ -73,7 +73,7 @@ export default function UploadPage() {
     <div className='max-w-4xl mx-auto space-y-6'>
       <div>
         <h1 className='text-3xl font-bold text-gray-900'>
-          Cargar Preguntas desde Archivo
+          Cargar Preguntas
         </h1>
         <p className='mt-2 text-gray-600'>
           Carga múltiples preguntas desde un archivo Excel o CSV

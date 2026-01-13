@@ -14,6 +14,7 @@ import {
 } from '@/hooks/use-questions';
 import { Question, Questionnaire, QuestionType } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -170,7 +171,14 @@ export default function QuestionsPage() {
           </p>
         </div>
         {!isCreating && !editingId && (
-          <Button onClick={() => setIsCreating(true)}>➕ Nueva Pregunta</Button>
+          <div className='flex gap-2'>
+            <Button onClick={() => setIsCreating(true)}>
+              ➕ Nueva Pregunta
+            </Button>
+            <Link href='/admin/upload'>
+              <Button variant='outline'>📤 Cargar Preguntas</Button>
+            </Link>
+          </div>
         )}
       </div>
 

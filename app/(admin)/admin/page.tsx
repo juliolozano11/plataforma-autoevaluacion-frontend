@@ -3,9 +3,9 @@
 import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { useQuestionnaires } from '@/hooks/use-questionnaires';
+import { useProgressPanel } from '@/hooks/use-reports';
 import { useSections } from '@/hooks/use-sections';
 import { useStudents } from '@/hooks/use-users';
-import { useProgressPanel } from '@/hooks/use-reports';
 import Link from 'next/link';
 
 export default function AdminDashboardPage() {
@@ -137,25 +137,25 @@ export default function AdminDashboardPage() {
                   href='/admin/sections'
                   className='block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-gray-900 hover:text-indigo-900'
                 >
-                  ➕ Crear Nueva Sección
+                  📁 Gestionar Secciones
                 </Link>
                 <Link
-                  href='/admin/upload'
+                  href='/admin/users'
                   className='block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-gray-900 hover:text-indigo-900'
                 >
-                  📤 Cargar Preguntas desde Archivo
+                  👥 Administrar Usuarios
+                </Link>
+                <Link
+                  href='/admin/careers'
+                  className='block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-gray-900 hover:text-indigo-900'
+                >
+                  🎓 Administrar Carreras
                 </Link>
                 <Link
                   href='/admin/config'
                   className='block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-gray-900 hover:text-indigo-900'
                 >
                   ⚙️ Configurar Indicadores
-                </Link>
-                <Link
-                  href='/admin/reports'
-                  className='block w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-gray-900 hover:text-indigo-900'
-                >
-                  📈 Ver Reportes
                 </Link>
               </div>
             </Card>

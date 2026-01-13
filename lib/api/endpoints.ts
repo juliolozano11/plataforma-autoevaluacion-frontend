@@ -84,6 +84,7 @@ export const API_ENDPOINTS = {
     exportGeneral: '/reports/export/general',
     exportGroupByCareer: '/reports/export/group/career',
     exportGroupByCourse: '/reports/export/group/course',
+    exportGroupByParallel: '/reports/export/group/parallel',
   },
   // Upload
   upload: {

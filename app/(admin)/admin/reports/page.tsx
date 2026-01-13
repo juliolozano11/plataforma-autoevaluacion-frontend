@@ -7,6 +7,7 @@ import {
   exportGeneralReport,
   exportGroupReportByCareer,
   exportGroupReportByCourse,
+  exportGroupReportByParallel,
   useProgressPanel,
 } from '@/hooks/use-reports';
 import { useSections } from '@/hooks/use-sections';
@@ -17,6 +18,7 @@ export default function ReportsPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   const [selectedCareer, setSelectedCareer] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedParallel, setSelectedParallel] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
   const { data: sections } = useSections();
@@ -52,6 +54,22 @@ export default function ReportsPage() {
     )
   ).sort();
 
+  // Obtener paralelos únicos según la carrera y curso seleccionados
+  const parallels = Array.from(
+    new Set(
+      allStudents
+        ?.filter(
+          (s) =>
+            s.isActive &&
+            s.parallel &&
+            (!selectedCareer || s.career === selectedCareer) &&
+            (!selectedCourse || s.course === selectedCourse)
+        )
+        .map((s) => s.parallel)
+        .filter(Boolean) || []
+    )
+  ).sort();
+
   // Manejar exportación de reporte general
   const handleExportGeneral = async () => {
     try {
@@ -75,7 +93,20 @@ export default function ReportsPage() {
   const handleExportGroupReport = async () => {
     try {
       setIsExporting(true);
-      if (selectedCareer && selectedCourse) {
+      if (
+        selectedCareer &&
+        selectedCourse &&
+        selectedParallel &&
+        selectedParallel !== 'all'
+      ) {
+        await exportGroupReportByParallel(
+          selectedCareer,
+          selectedCourse,
+          selectedParallel,
+          selectedSectionId || undefined
+        );
+      } else if (selectedCareer && selectedCourse) {
+        // Si se selecciona "Todos los paralelos" o no se selecciona paralelo, usar reporte por curso
         await exportGroupReportByCourse(
           selectedCareer,
           selectedCourse,
@@ -238,7 +269,7 @@ export default function ReportsPage() {
         <h2 className='text-xl font-semibold text-gray-900 mb-4'>
           Reportes Grupales
         </h2>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-4'>
+        <div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-4'>
           <div>
             <label className='block text-sm font-medium text-gray-700 mb-1'>
               Carrera
@@ -248,6 +279,7 @@ export default function ReportsPage() {
               onChange={(e) => {
                 setSelectedCareer(e.target.value);
                 setSelectedCourse('');
+                setSelectedParallel('');
               }}
               className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white'
             >
@@ -260,19 +292,59 @@ export default function ReportsPage() {
             </select>
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
+            <label
+              className={`block text-sm font-medium mb-1 ${
+                !selectedCareer ? 'text-gray-400' : 'text-gray-700'
+              }`}
+            >
               Curso
             </label>
             <select
               value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white'
+              onChange={(e) => {
+                setSelectedCourse(e.target.value);
+                setSelectedParallel('');
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 ${
+                !selectedCareer
+                  ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-900 bg-white'
+              }`}
               disabled={!selectedCareer}
             >
               <option value=''>Seleccionar</option>
               {courses.map((course) => (
                 <option key={course} value={course}>
                   {course}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              className={`block text-sm font-medium mb-1 ${
+                !selectedCareer || !selectedCourse
+                  ? 'text-gray-400'
+                  : 'text-gray-700'
+              }`}
+            >
+              Paralelo
+            </label>
+            <select
+              value={selectedParallel}
+              onChange={(e) => setSelectedParallel(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 ${
+                !selectedCareer || !selectedCourse
+                  ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-900 bg-white'
+              }`}
+              disabled={!selectedCareer || !selectedCourse}
+            >
+              <option value=''>Seleccionar</option>
+              <option value='all'>Todos los paralelos</option>
+              {parallels.map((parallel) => (
+                <option key={parallel} value={parallel}>
+                  {parallel}
                 </option>
               ))}
             </select>

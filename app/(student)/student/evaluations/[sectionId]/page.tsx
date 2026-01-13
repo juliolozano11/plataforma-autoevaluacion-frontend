@@ -416,7 +416,7 @@ export default function EvaluationPage() {
           {currentQuestionnaire?.title || 'Cuestionario'}
         </h1>
         <p className='mt-2 text-gray-600'>
-          <span className='font-medium'>Tipo:</span> {section.displayName}
+          {section.displayName}
         </p>
       </div>
 
@@ -476,43 +476,203 @@ export default function EvaluationPage() {
 
           {currentQuestion.type === QuestionType.SCALE && (
             <div className='space-y-4'>
-              <div className='flex items-center justify-between'>
+              <div className='flex items-center justify-between relative'>
                 <span className='text-sm text-gray-600'>
-                  {currentQuestion.minScale ?? 1} (Muy bajo)
+                  Muy bajo
+                </span>
+                <span className='text-sm text-gray-600 absolute left-1/2 transform -translate-x-1/2'>
+                  Intermedio
                 </span>
                 <span className='text-sm text-gray-600'>
-                  {currentQuestion.maxScale ?? 10} (Muy alto)
+                  Muy alto
                 </span>
               </div>
-              <input
-                type='range'
-                min={currentQuestion.minScale ?? 1}
-                max={currentQuestion.maxScale ?? 10}
-                value={
+              {(() => {
+                const minScale = currentQuestion.minScale ?? 1;
+                const maxScale = currentQuestion.maxScale ?? 10;
+                const value =
                   currentAnswer ||
-                  Math.round(
-                    ((currentQuestion.minScale ?? 1) +
-                      (currentQuestion.maxScale ?? 10)) /
-                      2
-                  )
+                  Math.round((minScale + maxScale) / 2);
+                
+                // Crear gradiente de colores para la barra del slider
+                // De rojo (mínimo) a verde (máximo) pasando por naranja, amarillo y verde claro
+                const gradientColors = [
+                  '#DC2626', // Rojo intenso (mínimo)
+                  '#EF4444', // Rojo menos intenso
+                  '#F97316', // Naranja intenso
+                  '#FB923C', // Naranja menos intenso
+                  '#EAB308', // Amarillo intenso
+                  '#FCD34D', // Amarillo menos intenso
+                  '#22C55E', // Verde claro intenso
+                  '#4ADE80', // Verde claro menos intenso
+                  '#16A34A', // Verde oscuro intenso
+                  '#15803D', // Verde oscuro menos intenso (máximo)
+                ];
+                
+                // Crear el gradiente lineal
+                const gradientStops = gradientColors
+                  .map((color, index) => {
+                    const percentage = (index / (gradientColors.length - 1)) * 100;
+                    return `${color} ${percentage}%`;
+                  })
+                  .join(', ');
+                
+                const gradientBackground = `linear-gradient(to right, ${gradientStops})`;
+                const sliderId = `slider-${currentQuestion._id}`;
+                
+                // Calcular las posiciones de las líneas de separación para cada valor
+                const separators = [];
+                for (let i = minScale + 1; i < maxScale; i++) {
+                  const position = ((i - minScale) / (maxScale - minScale)) * 100;
+                  separators.push(position);
                 }
-                onChange={(e) =>
-                  handleAnswerChange(
-                    currentQuestion._id,
-                    parseInt(e.target.value)
-                  )
-                }
-                className='w-full'
-              />
+                
+                return (
+                  <div className='relative'>
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        #${sliderId} {
+                          -webkit-appearance: none;
+                          appearance: none;
+                          width: 100%;
+                          height: 16px;
+                          border-radius: 8px;
+                          background: ${gradientBackground};
+                          outline: none;
+                          position: relative;
+                        }
+                        
+                        #${sliderId}::-webkit-slider-thumb {
+                          -webkit-appearance: none;
+                          appearance: none;
+                          width: 24px;
+                          height: 24px;
+                          border-radius: 50%;
+                          background: #fff;
+                          border: 3px solid #4B5563;
+                          cursor: pointer;
+                          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+                          position: relative;
+                          z-index: 3;
+                        }
+                        
+                        #${sliderId}::-moz-range-thumb {
+                          width: 24px;
+                          height: 24px;
+                          border-radius: 50%;
+                          background: #fff;
+                          border: 3px solid #4B5563;
+                          cursor: pointer;
+                          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+                          position: relative;
+                          z-index: 3;
+                        }
+                        
+                        #${sliderId}::-moz-range-track {
+                          background: ${gradientBackground};
+                          height: 16px;
+                          border-radius: 8px;
+                        }
+                        
+                        #${sliderId}-container {
+                          position: relative;
+                          width: 100%;
+                          padding: 4px 0;
+                        }
+                      `
+                    }} />
+                    <div id={`${sliderId}-container`} className='relative'>
+                      {/* Líneas de separación */}
+                      <div className='absolute top-0 left-0 w-full h-full pointer-events-none flex items-center' style={{ height: '16px', top: '4px' }}>
+                        {separators.map((position, index) => (
+                          <div
+                            key={index}
+                            className='absolute h-full w-px bg-gray-700 opacity-60'
+                            style={{ left: `${position}%` }}
+                          />
+                        ))}
+                      </div>
+                      <input
+                        type='range'
+                        id={sliderId}
+                        min={minScale}
+                        max={maxScale}
+                        value={value}
+                        onChange={(e) =>
+                          handleAnswerChange(
+                            currentQuestion._id,
+                            parseInt(e.target.value)
+                          )
+                        }
+                        className='w-full relative z-10'
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
               <div className='text-center'>
-                <span className='text-2xl font-bold text-indigo-600'>
-                  {currentAnswer ||
+                {(() => {
+                  const value =
+                    currentAnswer ||
                     Math.round(
                       ((currentQuestion.minScale ?? 1) +
                         (currentQuestion.maxScale ?? 10)) /
                         2
-                    )}
-                </span>
+                    );
+                  const minScale = currentQuestion.minScale ?? 1;
+                  const maxScale = currentQuestion.maxScale ?? 10;
+                  const totalValues = maxScale - minScale + 1;
+                  
+                  // Función para obtener el color según el valor con gradientes de intensidad
+                  // El mínimo siempre es rojo y el máximo siempre es verde
+                  const getColorForValue = (val: number) => {
+                    // Si es el valor mínimo, siempre rojo intenso
+                    if (val === minScale) {
+                      return '#DC2626'; // Rojo intenso
+                    }
+                    
+                    // Si es el valor máximo, siempre verde oscuro intenso
+                    if (val === maxScale) {
+                      return '#15803D'; // Verde oscuro intenso
+                    }
+                    
+                    // Calcular la posición normalizada (0 = min, 1 = max)
+                    const normalized = (val - minScale) / (maxScale - minScale);
+                    
+                    // Dividir en 5 grupos de colores para los valores intermedios
+                    // Cada grupo tiene variaciones de intensidad
+                    const groupSize = 1 / 5; // Dividir el rango normalizado en 5 grupos
+                    const groupIndex = Math.floor(normalized / groupSize);
+                    const positionInGroup = (normalized % groupSize) / groupSize;
+                    
+                    // Colores para cada grupo (de rojo a verde)
+                    const colorGroups = [
+                      { intense: '#DC2626', light: '#EF4444' }, // Rojo (primer grupo, cerca del mínimo)
+                      { intense: '#F97316', light: '#FB923C' }, // Naranja
+                      { intense: '#EAB308', light: '#FCD34D' }, // Amarillo
+                      { intense: '#22C55E', light: '#4ADE80' }, // Verde claro
+                      { intense: '#16A34A', light: '#15803D' }, // Verde oscuro (último grupo, cerca del máximo)
+                    ];
+                    
+                    // Seleccionar el grupo (asegurarse de que no exceda el índice)
+                    const group = colorGroups[Math.min(groupIndex, colorGroups.length - 1)];
+                    
+                    // Si está en la primera mitad del grupo, usar color intenso
+                    // Si está en la segunda mitad, usar color menos intenso
+                    return positionInGroup < 0.5 ? group.intense : group.light;
+                  };
+                  
+                  const color = getColorForValue(value);
+                  
+                  return (
+                    <span
+                      className='text-2xl font-bold'
+                      style={{ color }}
+                    >
+                      {value}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           )}

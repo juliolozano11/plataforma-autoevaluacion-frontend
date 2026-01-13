@@ -12,7 +12,7 @@ import {
   useUpdateQuestionnaire,
 } from '@/hooks/use-questionnaires';
 import { useSections } from '@/hooks/use-sections';
-import { Questionnaire, Section } from '@/types';
+import { Questionnaire, Section, SectionName } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -30,6 +30,8 @@ type QuestionnaireFormData = z.infer<typeof questionnaireSchema>;
 export default function QuestionnairesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedCompetence, setSelectedCompetence] = useState<SectionName | 'all'>('all');
+  const [selectedSection, setSelectedSection] = useState<string>('all');
   const { data: questionnaires, isLoading, error } = useQuestionnaires();
   const { data: sections } = useSections();
   const createQuestionnaire = useCreateQuestionnaire();
@@ -94,6 +96,55 @@ export default function QuestionnairesPage() {
     return section?.displayName || 'Sección desconocida';
   };
 
+  // Función para obtener el tipo de competencia de un cuestionario
+  const getQuestionnaireCompetence = (questionnaire: Questionnaire): SectionName | null => {
+    const sectionId = typeof questionnaire.sectionId === 'object' 
+      ? questionnaire.sectionId?._id 
+      : questionnaire.sectionId;
+    
+    if (!sectionId) return null;
+    
+    const section = sections?.find((s) => s._id === sectionId);
+    return section?.name || null;
+  };
+
+  // Función para obtener el label del tipo de competencia
+  const getCompetenceLabel = (competence: SectionName): string => {
+    switch (competence) {
+      case SectionName.BLANDAS:
+        return 'Competencias Blandas';
+      case SectionName.ADAPTATIVAS:
+        return 'Competencias Adaptativas';
+      case SectionName.TECNOLOGICAS:
+        return 'Competencias Tecnológicas';
+      default:
+        return '';
+    }
+  };
+
+  // Filtrar cuestionarios por competencia y sección seleccionadas
+  const filteredQuestionnaires = questionnaires?.filter((questionnaire) => {
+    // Filtro por competencia
+    if (selectedCompetence !== 'all') {
+      const competence = getQuestionnaireCompetence(questionnaire);
+      if (competence !== selectedCompetence) {
+        return false;
+      }
+    }
+
+    // Filtro por sección
+    if (selectedSection !== 'all') {
+      const sectionId = typeof questionnaire.sectionId === 'object'
+        ? questionnaire.sectionId?._id
+        : questionnaire.sectionId;
+      if (String(sectionId) !== selectedSection) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   if (isLoading) {
     return (
       <div className='flex justify-center py-12'>
@@ -123,6 +174,64 @@ export default function QuestionnairesPage() {
           </Button>
         )}
       </div>
+
+      {/* Filtros por competencia y sección */}
+      <Card className='p-4'>
+        <div className='flex flex-col md:flex-row items-start md:items-center gap-3'>
+          <div className='flex items-center gap-2'>
+            <label className='text-sm font-medium text-gray-700 whitespace-nowrap'>
+              Filtrar por competencia:
+            </label>
+            <select
+              value={selectedCompetence}
+              onChange={(e) => {
+                setSelectedCompetence(e.target.value as SectionName | 'all');
+                setSelectedSection('all'); // Reset sección cuando cambia competencia
+              }}
+              className='px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900'
+            >
+              <option value='all'>Todas las competencias</option>
+              <option value={SectionName.BLANDAS}>Competencias Blandas</option>
+              <option value={SectionName.ADAPTATIVAS}>
+                Competencias Adaptativas
+              </option>
+              <option value={SectionName.TECNOLOGICAS}>
+                Competencias Tecnológicas
+              </option>
+            </select>
+          </div>
+          <div className='flex items-center gap-2'>
+            <label className='text-sm font-medium text-gray-700 whitespace-nowrap'>
+              Filtrar por sección:
+            </label>
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className='px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900'
+            >
+              <option value='all'>Todas las secciones</option>
+              {sections
+                ?.filter((section) => {
+                  // Si hay un filtro de competencia activo, solo mostrar secciones de esa competencia
+                  if (selectedCompetence !== 'all') {
+                    return section.name === selectedCompetence;
+                  }
+                  return true;
+                })
+                .map((section) => (
+                  <option key={section._id} value={section._id}>
+                    {section.displayName}
+                  </option>
+                ))}
+            </select>
+          </div>
+          {(selectedCompetence !== 'all' || selectedSection !== 'all') && (
+            <span className='text-sm text-gray-500 whitespace-nowrap ml-auto'>
+              {filteredQuestionnaires?.length || 0} cuestionario(s) encontrado(s)
+            </span>
+          )}
+        </div>
+      </Card>
 
       {(isCreating || editingId) && (
         <Card className='p-6'>
@@ -200,12 +309,16 @@ export default function QuestionnairesPage() {
       )}
 
       <div className='grid grid-cols-1 gap-4'>
-        {questionnaires && questionnaires.length === 0 ? (
+        {!filteredQuestionnaires || filteredQuestionnaires.length === 0 ? (
           <Card className='p-6 text-center'>
-            <p className='text-gray-500'>No hay cuestionarios creados aún</p>
+            <p className='text-gray-500'>
+              {selectedCompetence === 'all' && selectedSection === 'all'
+                ? 'No hay cuestionarios creados aún'
+                : 'No hay cuestionarios que coincidan con los filtros seleccionados'}
+            </p>
           </Card>
         ) : (
-          questionnaires?.map((questionnaire) => (
+          filteredQuestionnaires.map((questionnaire) => (
             <Card key={questionnaire._id} className='p-6'>
               <div className='flex items-center justify-between'>
                 <div className='flex-1'>

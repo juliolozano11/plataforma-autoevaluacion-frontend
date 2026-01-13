@@ -28,6 +28,9 @@ type SectionFormData = z.infer<typeof sectionSchema>;
 export default function SectionsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedCompetence, setSelectedCompetence] = useState<
+    SectionName | 'all'
+  >('all');
   const { data: sections, isLoading, error } = useSections();
   const createSection = useCreateSection();
   const updateSection = useUpdateSection();
@@ -79,6 +82,26 @@ export default function SectionsPage() {
     }
   };
 
+  // Función para obtener el nombre completo del tipo de sección
+  const getSectionTypeLabel = (sectionName: SectionName): string => {
+    switch (sectionName) {
+      case SectionName.BLANDAS:
+        return 'Competencias Blandas';
+      case SectionName.ADAPTATIVAS:
+        return 'Competencias Adaptativas';
+      case SectionName.TECNOLOGICAS:
+        return 'Competencias Tecnológicas';
+      default:
+        return sectionName;
+    }
+  };
+
+  // Filtrar secciones por competencia seleccionada
+  const filteredSections =
+    selectedCompetence === 'all'
+      ? sections
+      : sections?.filter((section) => section.name === selectedCompetence);
+
   if (isLoading) {
     return (
       <div className='flex justify-center py-12'>
@@ -107,6 +130,36 @@ export default function SectionsPage() {
           <Button onClick={() => setIsCreating(true)}>➕ Nueva Sección</Button>
         )}
       </div>
+
+      {/* Filtro por competencia */}
+      <Card className='p-4'>
+        <div className='flex items-center gap-4'>
+          <label className='text-sm font-medium text-gray-700'>
+            Filtrar por competencia:
+          </label>
+          <select
+            value={selectedCompetence}
+            onChange={(e) =>
+              setSelectedCompetence(e.target.value as SectionName | 'all')
+            }
+            className='px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900'
+          >
+            <option value='all'>Todas las competencias</option>
+            <option value={SectionName.BLANDAS}>Competencias Blandas</option>
+            <option value={SectionName.ADAPTATIVAS}>
+              Competencias Adaptativas
+            </option>
+            <option value={SectionName.TECNOLOGICAS}>
+              Competencias Tecnológicas
+            </option>
+          </select>
+          {selectedCompetence !== 'all' && (
+            <span className='text-sm text-gray-500'>
+              {filteredSections?.length || 0} sección(es) encontrada(s)
+            </span>
+          )}
+        </div>
+      </Card>
 
       {(isCreating || editingId) && (
         <Card className='p-6'>
@@ -180,12 +233,16 @@ export default function SectionsPage() {
       )}
 
       <div className='grid grid-cols-1 gap-4'>
-        {sections && sections.length === 0 ? (
+        {!filteredSections || filteredSections.length === 0 ? (
           <Card className='p-6 text-center'>
-            <p className='text-gray-500'>No hay secciones creadas aún</p>
+            <p className='text-gray-500'>
+              {selectedCompetence === 'all'
+                ? 'No hay secciones creadas aún'
+                : 'No hay secciones para esta competencia'}
+            </p>
           </Card>
         ) : (
-          sections?.map((section) => (
+          filteredSections.map((section) => (
             <Card key={section._id} className='p-6'>
               <div className='flex items-center justify-between'>
                 <div className='flex-1'>
@@ -206,7 +263,7 @@ export default function SectionsPage() {
                     </span>
                   </div>
                   <p className='text-sm text-gray-500 mt-1'>
-                    Tipo: {section.name}
+                    Tipo: {getSectionTypeLabel(section.name)}
                   </p>
                   {section.description && (
                     <p className='text-sm text-gray-600 mt-2'>

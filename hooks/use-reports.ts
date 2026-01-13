@@ -176,3 +176,21 @@ export const exportGroupReportByCourse = async (
   await downloadFile(url, filename);
 };
 
+// Función para exportar reporte grupal por paralelo
+export const exportGroupReportByParallel = async (
+  career: string,
+  course: string,
+  parallel: string,
+  sectionId?: string
+) => {
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    'https://plataforma-autoevaluacion-backend-production.up.railway.app/api';
+  let url = `${API_URL}${API_ENDPOINTS.reports.exportGroupByParallel}?career=${encodeURIComponent(career)}&course=${encodeURIComponent(course)}&parallel=${encodeURIComponent(parallel)}`;
+  if (sectionId) {
+    url += `&sectionId=${encodeURIComponent(sectionId)}`;
+  }
+  const filename = `reporte-grupal-paralelo-${career}-${course}-${parallel}-${new Date().toISOString().split('T')[0]}.xlsx`;
+  await downloadFile(url, filename);
+};
+
