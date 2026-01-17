@@ -193,4 +193,3 @@ export const exportGroupReportByParallel = async (
   const filename = `reporte-grupal-paralelo-${career}-${course}-${parallel}-${new Date().toISOString().split('T')[0]}.xlsx`;
   await downloadFile(url, filename);
 };
-

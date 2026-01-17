@@ -28,8 +28,8 @@ export function AdminSidebar() {
           // Para otros, activo si la ruta empieza con el href
           const isActive =
             item.href === '/admin'
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(item.href + '/');
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.href}

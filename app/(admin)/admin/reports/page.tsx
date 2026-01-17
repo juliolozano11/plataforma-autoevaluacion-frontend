@@ -147,10 +147,10 @@ export default function ReportsPage() {
     <div className='space-y-6'>
       <div>
         <h1 className='text-3xl font-bold text-gray-900'>
-          Reportes y Estadísticas
+          Reportes
         </h1>
         <p className='mt-2 text-gray-600'>
-          Visualiza reportes individuales, grupales y estadísticas generales
+          Genera y exporta reportes grupales y generales de las evaluaciones
         </p>
       </div>
 

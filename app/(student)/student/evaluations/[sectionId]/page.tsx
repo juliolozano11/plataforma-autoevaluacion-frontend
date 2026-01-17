@@ -5,11 +5,11 @@ import { Card } from '@/components/ui/card';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { Loading } from '@/components/ui/loading';
 import {
-  useCompleteEvaluation,
-  useCreateEvaluation,
-  useEvaluations,
-  useStartEvaluation,
-  useSubmitAnswer,
+    useCompleteEvaluation,
+    useCreateEvaluation,
+    useEvaluations,
+    useStartEvaluation,
+    useSubmitAnswer,
 } from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useQuestions } from '@/hooks/use-questions';
@@ -476,23 +476,72 @@ export default function EvaluationPage() {
 
           {currentQuestion.type === QuestionType.SCALE && (
             <div className='space-y-4'>
-              <div className='flex items-center justify-between relative'>
-                <span className='text-sm text-gray-600'>
-                  Muy bajo
-                </span>
-                <span className='text-sm text-gray-600 absolute left-1/2 transform -translate-x-1/2'>
-                  Intermedio
-                </span>
-                <span className='text-sm text-gray-600'>
-                  Muy alto
-                </span>
-              </div>
               {(() => {
+                const responseType = currentQuestion.responseType || 'satisfaction';
+                
+                // Función para obtener las etiquetas superiores del slider (siempre las mismas)
+                const getLabels = (min: number, max: number) => {
+                  return {
+                    min: 'Mínimo',
+                    mid: 'Intermedio',
+                    max: 'Máximo',
+                  };
+                };
+                
                 const minScale = currentQuestion.minScale ?? 1;
                 const maxScale = currentQuestion.maxScale ?? 10;
-                const value =
-                  currentAnswer ||
-                  Math.round((minScale + maxScale) / 2);
+                const labels = getLabels(minScale, maxScale);
+                
+                return (
+                  <>
+                    <div className='flex items-center justify-between relative'>
+                      <span className='text-sm text-gray-600'>
+                        {labels.min}
+                      </span>
+                      <span className='text-sm text-gray-600 absolute left-1/2 transform -translate-x-1/2'>
+                        {labels.mid}
+                      </span>
+                      <span className='text-sm text-gray-600'>
+                        {labels.max}
+                      </span>
+                    </div>
+                    {(() => {
+                      const value =
+                        currentAnswer ||
+                        Math.round((minScale + maxScale) / 2);
+                      
+                      // Función para obtener el emoji según el valor
+                      const getEmojiForValue = (val: number) => {
+                  const totalValues = maxScale - minScale + 1;
+                  
+                  // Si es el valor mínimo, siempre cara enojada
+                  if (val === minScale) {
+                    return '😠';
+                  }
+                  
+                  // Si es el valor máximo, siempre cara muy feliz
+                  if (val === maxScale) {
+                    return '😄';
+                  }
+                  
+                  // Calcular la posición normalizada (0 = min, 1 = max)
+                  const normalized = (val - minScale) / (maxScale - minScale);
+                  
+                  // Dividir en rangos para diferentes expresiones
+                  if (normalized <= 0.25) {
+                    // Muy cerca del mínimo: cara ligeramente triste/preocupada
+                    return '😕';
+                  } else if (normalized <= 0.5) {
+                    // Entre bajo y medio: cara neutral/poker
+                    return '😐';
+                  } else if (normalized <= 0.75) {
+                    // Entre medio y alto: cara ligeramente feliz
+                    return '🙂';
+                  } else {
+                    // Cerca del máximo: cara feliz
+                    return '😊';
+                  }
+                };
                 
                 // Crear gradiente de colores para la barra del slider
                 // De rojo (mínimo) a verde (máximo) pasando por naranja, amarillo y verde claro
@@ -527,6 +576,9 @@ export default function EvaluationPage() {
                   separators.push(position);
                 }
                 
+                // Calcular la posición del thumb en porcentaje
+                const thumbPosition = ((value - minScale) / (maxScale - minScale)) * 100;
+                
                 return (
                   <div className='relative'>
                     <style dangerouslySetInnerHTML={{
@@ -535,55 +587,75 @@ export default function EvaluationPage() {
                           -webkit-appearance: none;
                           appearance: none;
                           width: 100%;
-                          height: 16px;
-                          border-radius: 8px;
+                          height: 28px;
+                          border-radius: 14px;
                           background: ${gradientBackground};
                           outline: none;
                           position: relative;
+                          cursor: pointer;
+                          -webkit-tap-highlight-color: transparent;
                         }
                         
                         #${sliderId}::-webkit-slider-thumb {
                           -webkit-appearance: none;
                           appearance: none;
-                          width: 24px;
-                          height: 24px;
-                          border-radius: 50%;
-                          background: #fff;
-                          border: 3px solid #4B5563;
-                          cursor: pointer;
-                          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-                          position: relative;
-                          z-index: 3;
+                          width: 44px;
+                          height: 56px;
+                          opacity: 0;
+                          cursor: grab;
+                          background: transparent;
+                          border: none;
+                          pointer-events: auto;
+                          -webkit-tap-highlight-color: transparent;
+                        }
+                        
+                        #${sliderId}::-webkit-slider-thumb:active {
+                          cursor: grabbing;
+                        }
+                        
+                        #${sliderId}::-webkit-slider-thumb:hover {
+                          cursor: grab;
                         }
                         
                         #${sliderId}::-moz-range-thumb {
-                          width: 24px;
-                          height: 24px;
-                          border-radius: 50%;
-                          background: #fff;
-                          border: 3px solid #4B5563;
-                          cursor: pointer;
-                          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-                          position: relative;
-                          z-index: 3;
+                          width: 44px;
+                          height: 56px;
+                          opacity: 0;
+                          cursor: grab;
+                          border: none;
+                          background: transparent;
+                          pointer-events: auto;
+                        }
+                        
+                        #${sliderId}::-moz-range-thumb:active {
+                          cursor: grabbing;
+                        }
+                        
+                        #${sliderId}::-moz-range-thumb:hover {
+                          cursor: grab;
                         }
                         
                         #${sliderId}::-moz-range-track {
                           background: ${gradientBackground};
-                          height: 16px;
-                          border-radius: 8px;
+                          height: 28px;
+                          border-radius: 14px;
                         }
                         
                         #${sliderId}-container {
                           position: relative;
                           width: 100%;
-                          padding: 4px 0;
+                          padding: 4px 0 40px 0;
+                          pointer-events: none;
+                        }
+                        
+                        #${sliderId}-container > input {
+                          pointer-events: auto;
                         }
                       `
                     }} />
                     <div id={`${sliderId}-container`} className='relative'>
                       {/* Líneas de separación */}
-                      <div className='absolute top-0 left-0 w-full h-full pointer-events-none flex items-center' style={{ height: '16px', top: '4px' }}>
+                      <div className='absolute top-0 left-0 w-full h-full pointer-events-none flex items-center' style={{ height: '28px', top: '4px' }}>
                         {separators.map((position, index) => (
                           <div
                             key={index}
@@ -604,76 +676,343 @@ export default function EvaluationPage() {
                             parseInt(e.target.value)
                           )
                         }
+                        onInput={(e) =>
+                          handleAnswerChange(
+                            currentQuestion._id,
+                            parseInt((e.target as HTMLInputElement).value)
+                          )
+                        }
                         className='w-full relative z-10'
+                        style={{ touchAction: 'none' }}
                       />
+                      {/* Thumb personalizado con emoji */}
+                      <div
+                        className='absolute pointer-events-none z-20 flex items-center justify-center'
+                        style={{
+                          left: `calc(${thumbPosition}% - 22px)`,
+                          top: '18px',
+                          width: '44px',
+                          height: '56px',
+                          transform: 'translateY(-50%)',
+                        }}
+                      >
+                        <div className='text-5xl select-none'>
+                          {getEmojiForValue(value)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
-              <div className='text-center'>
-                {(() => {
-                  const value =
-                    currentAnswer ||
-                    Math.round(
-                      ((currentQuestion.minScale ?? 1) +
-                        (currentQuestion.maxScale ?? 10)) /
-                        2
-                    );
-                  const minScale = currentQuestion.minScale ?? 1;
-                  const maxScale = currentQuestion.maxScale ?? 10;
+              {/* Mostrar etiqueta del valor seleccionado */}
+              {(() => {
+                const value =
+                  currentAnswer ||
+                  Math.round((minScale + maxScale) / 2);
+                const responseType = currentQuestion.responseType || 'satisfaction';
+                
+                const getValueLabel = (val: number, type: string) => {
+                  // Si es numérico, devolver el número directamente
+                  if (type === 'numeric') {
+                    return String(val);
+                  }
+                  
                   const totalValues = maxScale - minScale + 1;
+                  const position = val - minScale; // Posición relativa (0 = min, totalValues-1 = max)
+                  const relativeValue = position + 1; // Valor relativo (1 a totalValues)
                   
-                  // Función para obtener el color según el valor con gradientes de intensidad
-                  // El mínimo siempre es rojo y el máximo siempre es verde
-                  const getColorForValue = (val: number) => {
-                    // Si es el valor mínimo, siempre rojo intenso
-                    if (val === minScale) {
-                      return '#DC2626'; // Rojo intenso
+                  if (type === 'frequency') {
+                    // Mapeo manual según las escalas de la captura
+                    if (totalValues === 5) {
+                      // Escala relativa 1 a 5
+                      const map: Record<number, string> = {
+                        1: 'Nunca',
+                        2: 'Pocas veces',
+                        3: 'Ocasionalmente',
+                        4: 'Frecuentemente',
+                        5: 'Siempre',
+                      };
+                      return map[relativeValue] || 'Nunca';
+                    } else if (totalValues === 6) {
+                      // Escala relativa 1 a 6
+                      const map: Record<number, string> = {
+                        1: 'Nunca',
+                        2: 'Muy pocas veces',
+                        3: 'Pocas veces',
+                        4: 'Frecuentemente',
+                        5: 'Muy frecuentemente',
+                        6: 'Siempre',
+                      };
+                      return map[relativeValue] || 'Nunca';
+                    } else if (totalValues === 7) {
+                      // Escala relativa 1 a 7
+                      const map: Record<number, string> = {
+                        1: 'Nunca',
+                        2: 'Muy pocas veces',
+                        3: 'Pocas veces',
+                        4: 'Ocasionalmente',
+                        5: 'Frecuentemente',
+                        6: 'Muy frecuentemente',
+                        7: 'Siempre',
+                      };
+                      return map[relativeValue] || 'Nunca';
+                    } else if (totalValues === 8) {
+                      // Escala relativa 1 a 8
+                      const map: Record<number, string> = {
+                        1: 'Nunca',
+                        2: 'Casi nunca',
+                        3: 'Muy pocas veces',
+                        4: 'Pocas veces',
+                        5: 'Frecuentemente',
+                        6: 'Muy frecuentemente',
+                        7: 'Casi siempre',
+                        8: 'Siempre',
+                      };
+                      return map[relativeValue] || 'Nunca';
+                    } else if (totalValues === 9) {
+                      // Escala relativa 1 a 9
+                      const map: Record<number, string> = {
+                        1: 'Nunca',
+                        2: 'Casi nunca',
+                        3: 'Muy pocas veces',
+                        4: 'Pocas veces',
+                        5: 'Ocasionalmente',
+                        6: 'Frecuentemente',
+                        7: 'Muy frecuentemente',
+                        8: 'Casi siempre',
+                        9: 'Siempre',
+                      };
+                      return map[relativeValue] || 'Nunca';
+                    } else if (totalValues === 10) {
+                      // Escala relativa 1 a 10
+                      const map: Record<number, string> = {
+                        1: 'Nunca',
+                        2: 'Casi nunca',
+                        3: 'Muy pocas veces',
+                        4: 'Pocas veces',
+                        5: 'Ocasionalmente',
+                        6: 'Frecuentemente',
+                        7: 'Muy frecuentemente',
+                        8: 'Casi siempre',
+                        9: 'Prácticamente siempre',
+                        10: 'Siempre',
+                      };
+                      return map[relativeValue] || 'Nunca';
+                    } else {
+                      // Para otras escalas, usar distribución proporcional
+                      const frequencyLabels = ['Nunca', 'Pocas veces', 'Ocasionalmente', 'Frecuentemente', 'Siempre'];
+                      const normalized = position / (totalValues - 1);
+                      const index = Math.round(normalized * (frequencyLabels.length - 1));
+                      return frequencyLabels[index];
                     }
-                    
-                    // Si es el valor máximo, siempre verde oscuro intenso
-                    if (val === maxScale) {
-                      return '#15803D'; // Verde oscuro intenso
+                  } else if (type === 'agreement') {
+                    // Mapeo para acuerdo según las escalas mostradas
+                    if (totalValues === 5) {
+                      const map: Record<number, string> = {
+                        1: 'Totalmente en desacuerdo',
+                        2: 'En desacuerdo',
+                        3: 'Neutral',
+                        4: 'De acuerdo',
+                        5: 'Totalmente de acuerdo',
+                      };
+                      return map[relativeValue] || 'Totalmente en desacuerdo';
+                    } else if (totalValues === 6) {
+                      const map: Record<number, string> = {
+                        1: 'Totalmente en desacuerdo',
+                        2: 'Muy en desacuerdo',
+                        3: 'En desacuerdo',
+                        4: 'De acuerdo',
+                        5: 'Muy de acuerdo',
+                        6: 'Totalmente de acuerdo',
+                      };
+                      return map[relativeValue] || 'Totalmente en desacuerdo';
+                    } else if (totalValues === 7) {
+                      const map: Record<number, string> = {
+                        1: 'Totalmente en desacuerdo',
+                        2: 'Muy en desacuerdo',
+                        3: 'En desacuerdo',
+                        4: 'Neutral',
+                        5: 'De acuerdo',
+                        6: 'Muy de acuerdo',
+                        7: 'Totalmente de acuerdo',
+                      };
+                      return map[relativeValue] || 'Totalmente en desacuerdo';
+                    } else if (totalValues === 8) {
+                      const map: Record<number, string> = {
+                        1: 'Totalmente en desacuerdo',
+                        2: 'Casi totalmente en desacuerdo',
+                        3: 'Muy en desacuerdo',
+                        4: 'En desacuerdo',
+                        5: 'De acuerdo',
+                        6: 'Muy de acuerdo',
+                        7: 'Casi totalmente de acuerdo',
+                        8: 'Totalmente de acuerdo',
+                      };
+                      return map[relativeValue] || 'Totalmente en desacuerdo';
+                    } else if (totalValues === 9) {
+                      const map: Record<number, string> = {
+                        1: 'Totalmente en desacuerdo',
+                        2: 'Casi totalmente en desacuerdo',
+                        3: 'Muy en desacuerdo',
+                        4: 'En desacuerdo',
+                        5: 'Neutral',
+                        6: 'De acuerdo',
+                        7: 'Muy de acuerdo',
+                        8: 'Casi totalmente de acuerdo',
+                        9: 'Totalmente de acuerdo',
+                      };
+                      return map[relativeValue] || 'Totalmente en desacuerdo';
+                    } else if (totalValues === 10) {
+                      const map: Record<number, string> = {
+                        1: 'Totalmente en desacuerdo',
+                        2: 'Casi totalmente en desacuerdo',
+                        3: 'Muy en desacuerdo',
+                        4: 'En desacuerdo',
+                        5: 'Ligeramente en desacuerdo',
+                        6: 'Ligeramente de acuerdo',
+                        7: 'De acuerdo',
+                        8: 'Muy de acuerdo',
+                        9: 'Casi totalmente de acuerdo',
+                        10: 'Totalmente de acuerdo',
+                      };
+                      return map[relativeValue] || 'Totalmente en desacuerdo';
+                    } else {
+                      const agreementLabels = ['Totalmente en desacuerdo', 'En desacuerdo', 'Neutral', 'De acuerdo', 'Totalmente de acuerdo'];
+                      const normalized = position / (totalValues - 1);
+                      const index = Math.round(normalized * (agreementLabels.length - 1));
+                      return agreementLabels[index];
                     }
-                    
-                    // Calcular la posición normalizada (0 = min, 1 = max)
-                    const normalized = (val - minScale) / (maxScale - minScale);
-                    
-                    // Dividir en 5 grupos de colores para los valores intermedios
-                    // Cada grupo tiene variaciones de intensidad
-                    const groupSize = 1 / 5; // Dividir el rango normalizado en 5 grupos
-                    const groupIndex = Math.floor(normalized / groupSize);
-                    const positionInGroup = (normalized % groupSize) / groupSize;
-                    
-                    // Colores para cada grupo (de rojo a verde)
-                    const colorGroups = [
-                      { intense: '#DC2626', light: '#EF4444' }, // Rojo (primer grupo, cerca del mínimo)
-                      { intense: '#F97316', light: '#FB923C' }, // Naranja
-                      { intense: '#EAB308', light: '#FCD34D' }, // Amarillo
-                      { intense: '#22C55E', light: '#4ADE80' }, // Verde claro
-                      { intense: '#16A34A', light: '#15803D' }, // Verde oscuro (último grupo, cerca del máximo)
-                    ];
-                    
-                    // Seleccionar el grupo (asegurarse de que no exceda el índice)
-                    const group = colorGroups[Math.min(groupIndex, colorGroups.length - 1)];
-                    
-                    // Si está en la primera mitad del grupo, usar color intenso
-                    // Si está en la segunda mitad, usar color menos intenso
-                    return positionInGroup < 0.5 ? group.intense : group.light;
-                  };
+                  } else {
+                    // satisfaction (default)
+                    if (totalValues === 5) {
+                      const map: Record<number, string> = {
+                        1: 'Nada satisfecho',
+                        2: 'Poco satisfecho',
+                        3: 'Moderadamente satisfecho',
+                        4: 'Satisfecho',
+                        5: 'Totalmente satisfecho',
+                      };
+                      return map[relativeValue] || 'Nada satisfecho';
+                    } else if (totalValues === 6) {
+                      const map: Record<number, string> = {
+                        1: 'Nada satisfecho',
+                        2: 'Muy poco satisfecho',
+                        3: 'Poco satisfecho',
+                        4: 'Satisfecho',
+                        5: 'Muy satisfecho',
+                        6: 'Totalmente satisfecho',
+                      };
+                      return map[relativeValue] || 'Nada satisfecho';
+                    } else if (totalValues === 7) {
+                      const map: Record<number, string> = {
+                        1: 'Nada satisfecho',
+                        2: 'Muy poco satisfecho',
+                        3: 'Poco satisfecho',
+                        4: 'Moderadamente satisfecho',
+                        5: 'Satisfecho',
+                        6: 'Muy satisfecho',
+                        7: 'Totalmente satisfecho',
+                      };
+                      return map[relativeValue] || 'Nada satisfecho';
+                    } else if (totalValues === 8) {
+                      const map: Record<number, string> = {
+                        1: 'Nada satisfecho',
+                        2: 'Casi nada satisfecho',
+                        3: 'Muy poco satisfecho',
+                        4: 'Poco satisfecho',
+                        5: 'Satisfecho',
+                        6: 'Muy satisfecho',
+                        7: 'Casi totalmente satisfecho',
+                        8: 'Totalmente satisfecho',
+                      };
+                      return map[relativeValue] || 'Nada satisfecho';
+                    } else if (totalValues === 9) {
+                      const map: Record<number, string> = {
+                        1: 'Nada satisfecho',
+                        2: 'Casi nada satisfecho',
+                        3: 'Muy poco satisfecho',
+                        4: 'Poco satisfecho',
+                        5: 'Moderadamente satisfecho',
+                        6: 'Satisfecho',
+                        7: 'Muy satisfecho',
+                        8: 'Casi totalmente satisfecho',
+                        9: 'Totalmente satisfecho',
+                      };
+                      return map[relativeValue] || 'Nada satisfecho';
+                    } else if (totalValues === 10) {
+                      const map: Record<number, string> = {
+                        1: 'Nada satisfecho',
+                        2: 'Casi nada satisfecho',
+                        3: 'Muy poco satisfecho',
+                        4: 'Poco satisfecho',
+                        5: 'Moderadamente satisfecho',
+                        6: 'Satisfecho',
+                        7: 'Muy satisfecho',
+                        8: 'Casi totalmente satisfecho',
+                        9: 'Prácticamente totalmente satisfecho',
+                        10: 'Totalmente satisfecho',
+                      };
+                      return map[relativeValue] || 'Nada satisfecho';
+                    } else {
+                      const satisfactionLabels = ['Nada satisfecho', 'Poco satisfecho', 'Moderadamente satisfecho', 'Satisfecho', 'Totalmente satisfecho'];
+                      const normalized = position / (totalValues - 1);
+                      const index = Math.round(normalized * (satisfactionLabels.length - 1));
+                      return satisfactionLabels[index];
+                    }
+                  }
+                };
+                
+                // Función para obtener el color según el valor (solo para numérico)
+                const getColorForValue = (val: number) => {
+                  // Si es el valor mínimo, siempre rojo intenso
+                  if (val === minScale) {
+                    return '#DC2626'; // Rojo intenso
+                  }
                   
-                  const color = getColorForValue(value);
+                  // Si es el valor máximo, siempre verde oscuro intenso
+                  if (val === maxScale) {
+                    return '#15803D'; // Verde oscuro intenso
+                  }
                   
-                  return (
+                  // Calcular la posición normalizada (0 = min, 1 = max)
+                  const normalized = (val - minScale) / (maxScale - minScale);
+                  
+                  // Dividir en 5 grupos de colores para los valores intermedios
+                  const groupSize = 1 / 5;
+                  const groupIndex = Math.floor(normalized / groupSize);
+                  const positionInGroup = (normalized % groupSize) / groupSize;
+                  
+                  // Colores para cada grupo (de rojo a verde)
+                  const colorGroups = [
+                    { intense: '#DC2626', light: '#EF4444' },
+                    { intense: '#F97316', light: '#FB923C' },
+                    { intense: '#EAB308', light: '#FCD34D' },
+                    { intense: '#22C55E', light: '#4ADE80' },
+                    { intense: '#16A34A', light: '#15803D' },
+                  ];
+                  
+                  const group = colorGroups[Math.min(groupIndex, colorGroups.length - 1)];
+                  return positionInGroup < 0.5 ? group.intense : group.light;
+                };
+                
+                return (
+                  <div className='text-center mt-4'>
                     <span
-                      className='text-2xl font-bold'
-                      style={{ color }}
+                      className='text-lg font-semibold'
+                      style={
+                        responseType === 'numeric'
+                          ? { color: getColorForValue(value) }
+                          : { color: '#1F2937' }
+                      }
                     >
-                      {value}
+                      {getValueLabel(value, responseType)}
                     </span>
-                  );
-                })()}
-              </div>
+                  </div>
+                );
+              })()}
+                  </>
+                );
+              })()}
             </div>
           )}
 

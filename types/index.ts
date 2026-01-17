@@ -104,6 +104,13 @@ export interface Questionnaire {
   updatedAt: string;
 }
 
+// Tipos de respuesta para escalas
+export enum ResponseType {
+  SATISFACTION = 'satisfaction',
+  FREQUENCY = 'frequency',
+  AGREEMENT = 'agreement',
+}
+
 // Interfaces de pregunta
 export interface Question {
   _id: string;
@@ -114,6 +121,7 @@ export interface Question {
   correctAnswer?: any;
   minScale?: number; // Valor mínimo de la escala para preguntas tipo scale
   maxScale?: number; // Valor máximo de la escala para preguntas tipo scale
+  responseType?: 'satisfaction' | 'frequency' | 'agreement' | 'numeric'; // Tipo de respuesta para escalas
   points: number;
   order: number;
   isActive: boolean;
