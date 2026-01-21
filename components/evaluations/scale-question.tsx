@@ -58,6 +58,7 @@ export function ScaleQuestion({ question, value, onChange }: Props) {
   const maxScale = question.maxScale ?? 10;
   const safeValue = typeof value === 'number' ? value : Math.round((minScale + maxScale) / 2);
   const responseType = (question.responseType || 'satisfaction') as ResponseType | 'numeric';
+  const thumbPosition = ((safeValue - minScale) / (maxScale - minScale || 1)) * 100;
 
   return (
     <div className='space-y-4'>
@@ -66,16 +67,27 @@ export function ScaleQuestion({ question, value, onChange }: Props) {
         <span>Intermedio</span>
         <span>Máximo</span>
       </div>
-      <input
-        type='range'
-        min={minScale}
-        max={maxScale}
-        value={safeValue}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className='w-full h-2 bg-gradient-to-r from-red-500 via-yellow-400 to-green-600 rounded-lg appearance-none cursor-pointer accent-indigo-600'
-      />
+      <div className='relative'>
+        <input
+          type='range'
+          min={minScale}
+          max={maxScale}
+          value={safeValue}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className='w-full h-2 bg-gradient-to-r from-red-500 via-yellow-400 to-green-600 rounded-lg appearance-none cursor-pointer accent-indigo-600'
+          style={{ accentColor: '#4f46e5' }}
+        />
+        <div
+          className='absolute -top-6'
+          style={{ left: `calc(${thumbPosition}% - 16px)` }}
+        >
+          <div className='w-8 h-8 rounded-md bg-gray-900 text-lg text-white flex items-center justify-center shadow'>
+            {pickEmoji(safeValue, minScale, maxScale)}
+          </div>
+        </div>
+      </div>
       <div className='flex items-center justify-between text-sm text-gray-500'>
-        <span>{pickEmoji(safeValue, minScale, maxScale)}</span>
+        <span />
         <span className='text-lg font-semibold text-gray-900'>
           {pickLabelByValue(safeValue, responseType, minScale, maxScale)}
         </span>
