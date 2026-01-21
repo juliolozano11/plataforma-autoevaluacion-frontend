@@ -78,16 +78,13 @@ export function ScaleQuestion({ question, value, onChange }: Props) {
           style={{ accentColor: '#4f46e5' }}
         />
         <div
-          className='absolute -top-6'
-          style={{ left: `calc(${thumbPosition}% - 16px)` }}
+          className='absolute -top-7 pointer-events-none select-none'
+          style={{ left: `${thumbPosition}%`, transform: 'translateX(-50%)' }}
         >
-          <div className='w-8 h-8 rounded-md bg-gray-900 text-lg text-white flex items-center justify-center shadow'>
-            {pickEmoji(safeValue, minScale, maxScale)}
-          </div>
+          <span className='text-2xl'>{pickEmoji(safeValue, minScale, maxScale)}</span>
         </div>
       </div>
-      <div className='flex items-center justify-between text-sm text-gray-500'>
-        <span />
+      <div className='text-center text-sm text-gray-500'>
         <span className='text-lg font-semibold text-gray-900'>
           {pickLabelByValue(safeValue, responseType, minScale, maxScale)}
         </span>
