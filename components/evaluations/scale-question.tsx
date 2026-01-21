@@ -6,214 +6,22 @@ type Props = {
   onChange: (value: number) => void;
 };
 
-const labelSets: Record<
-  ResponseType | 'numeric',
-  Record<number, string[]> & { default: string[] }
-> = {
-  numeric: {
-    default: [],
-  },
-  satisfaction: {
-    5: [
-      'Nada satisfecho',
-      'Poco satisfecho',
-      'Moderadamente satisfecho',
-      'Satisfecho',
-      'Totalmente satisfecho',
-    ],
-    6: [
-      'Nada satisfecho',
-      'Muy poco satisfecho',
-      'Poco satisfecho',
-      'Satisfecho',
-      'Muy satisfecho',
-      'Totalmente satisfecho',
-    ],
-    7: [
-      'Nada satisfecho',
-      'Muy poco satisfecho',
-      'Poco satisfecho',
-      'Moderadamente satisfecho',
-      'Satisfecho',
-      'Muy satisfecho',
-      'Totalmente satisfecho',
-    ],
-    8: [
-      'Nada satisfecho',
-      'Casi nada satisfecho',
-      'Muy poco satisfecho',
-      'Poco satisfecho',
-      'Satisfecho',
-      'Muy satisfecho',
-      'Casi totalmente satisfecho',
-      'Totalmente satisfecho',
-    ],
-    9: [
-      'Nada satisfecho',
-      'Casi nada satisfecho',
-      'Muy poco satisfecho',
-      'Poco satisfecho',
-      'Moderadamente satisfecho',
-      'Satisfecho',
-      'Muy satisfecho',
-      'Casi totalmente satisfecho',
-      'Totalmente satisfecho',
-    ],
-    10: [
-      'Nada satisfecho',
-      'Casi nada satisfecho',
-      'Muy poco satisfecho',
-      'Poco satisfecho',
-      'Moderadamente satisfecho',
-      'Satisfecho',
-      'Muy satisfecho',
-      'Casi totalmente satisfecho',
-      'Prácticamente totalmente satisfecho',
-      'Totalmente satisfecho',
-    ],
-    default: [
-      'Nada satisfecho',
-      'Poco satisfecho',
-      'Moderadamente satisfecho',
-      'Satisfecho',
-      'Totalmente satisfecho',
-    ],
-  },
-  frequency: {
-    5: ['Nunca', 'Pocas veces', 'Ocasionalmente', 'Frecuentemente', 'Siempre'],
-    6: [
-      'Nunca',
-      'Muy pocas veces',
-      'Pocas veces',
-      'Frecuentemente',
-      'Muy frecuentemente',
-      'Siempre',
-    ],
-    7: [
-      'Nunca',
-      'Muy pocas veces',
-      'Pocas veces',
-      'Ocasionalmente',
-      'Frecuentemente',
-      'Muy frecuentemente',
-      'Siempre',
-    ],
-    8: [
-      'Nunca',
-      'Casi nunca',
-      'Muy pocas veces',
-      'Pocas veces',
-      'Frecuentemente',
-      'Muy frecuentemente',
-      'Casi siempre',
-      'Siempre',
-    ],
-    9: [
-      'Nunca',
-      'Casi nunca',
-      'Muy pocas veces',
-      'Pocas veces',
-      'Ocasionalmente',
-      'Frecuentemente',
-      'Muy frecuentemente',
-      'Casi siempre',
-      'Siempre',
-    ],
-    10: [
-      'Nunca',
-      'Casi nunca',
-      'Muy pocas veces',
-      'Pocas veces',
-      'Ocasionalmente',
-      'Frecuentemente',
-      'Muy frecuentemente',
-      'Casi siempre',
-      'Prácticamente siempre',
-      'Siempre',
-    ],
-    default: [
-      'Nunca',
-      'Pocas veces',
-      'Ocasionalmente',
-      'Frecuentemente',
-      'Siempre',
-    ],
-  },
-  agreement: {
-    5: [
-      'Totalmente en desacuerdo',
-      'En desacuerdo',
-      'Neutral',
-      'De acuerdo',
-      'Totalmente de acuerdo',
-    ],
-    6: [
-      'Totalmente en desacuerdo',
-      'Muy en desacuerdo',
-      'En desacuerdo',
-      'De acuerdo',
-      'Muy de acuerdo',
-      'Totalmente de acuerdo',
-    ],
-    7: [
-      'Totalmente en desacuerdo',
-      'Muy en desacuerdo',
-      'En desacuerdo',
-      'Neutral',
-      'De acuerdo',
-      'Muy de acuerdo',
-      'Totalmente de acuerdo',
-    ],
-    8: [
-      'Totalmente en desacuerdo',
-      'Casi totalmente en desacuerdo',
-      'Muy en desacuerdo',
-      'En desacuerdo',
-      'De acuerdo',
-      'Muy de acuerdo',
-      'Casi totalmente de acuerdo',
-      'Totalmente de acuerdo',
-    ],
-    9: [
-      'Totalmente en desacuerdo',
-      'Casi totalmente en desacuerdo',
-      'Muy en desacuerdo',
-      'En desacuerdo',
-      'Neutral',
-      'De acuerdo',
-      'Muy de acuerdo',
-      'Casi totalmente de acuerdo',
-      'Totalmente de acuerdo',
-    ],
-    10: [
-      'Totalmente en desacuerdo',
-      'Casi totalmente en desacuerdo',
-      'Muy en desacuerdo',
-      'En desacuerdo',
-      'Ligeramente en desacuerdo',
-      'Ligeramente de acuerdo',
-      'De acuerdo',
-      'Muy de acuerdo',
-      'Casi totalmente de acuerdo',
-      'Totalmente de acuerdo',
-    ],
-    default: [
-      'Totalmente en desacuerdo',
-      'En desacuerdo',
-      'Neutral',
-      'De acuerdo',
-      'Totalmente de acuerdo',
-    ],
-  },
-};
-
-const pickLabels = (
-  type: ResponseType | 'numeric',
-  total: number
-): string[] | null => {
-  const set = labelSets[type];
-  if (!set) return null;
-  return set[total] || set.default || null;
+const baseLabels: Record<ResponseType, string[]> = {
+  satisfaction: [
+    'Nada satisfecho',
+    'Poco satisfecho',
+    'Moderadamente satisfecho',
+    'Satisfecho',
+    'Totalmente satisfecho',
+  ],
+  frequency: ['Nunca', 'Pocas veces', 'Ocasionalmente', 'Frecuentemente', 'Siempre'],
+  agreement: [
+    'Totalmente en desacuerdo',
+    'En desacuerdo',
+    'Neutral',
+    'De acuerdo',
+    'Totalmente de acuerdo',
+  ],
 };
 
 const pickLabelByValue = (
@@ -226,16 +34,11 @@ const pickLabelByValue = (
     return String(value);
   }
 
-  const labels = pickLabels(type, max - min + 1);
-  if (!labels || labels.length === 0) {
-    return String(value);
-  }
+  const labels = baseLabels[type];
+  if (!labels) return String(value);
 
   const normalized = (value - min) / (max - min || 1);
-  const index = Math.min(
-    labels.length - 1,
-    Math.max(0, Math.round(normalized * (labels.length - 1)))
-  );
+  const index = Math.min(labels.length - 1, Math.max(0, Math.round(normalized * (labels.length - 1))));
 
   return labels[index];
 };
@@ -253,10 +56,8 @@ const pickEmoji = (value: number, min: number, max: number) => {
 export function ScaleQuestion({ question, value, onChange }: Props) {
   const minScale = question.minScale ?? 1;
   const maxScale = question.maxScale ?? 10;
-  const safeValue =
-    typeof value === 'number' ? value : Math.round((minScale + maxScale) / 2);
-  const responseType = (question.responseType ||
-    'satisfaction') as ResponseType | 'numeric';
+  const safeValue = typeof value === 'number' ? value : Math.round((minScale + maxScale) / 2);
+  const responseType = (question.responseType || 'satisfaction') as ResponseType | 'numeric';
 
   return (
     <div className='space-y-4'>
@@ -270,7 +71,7 @@ export function ScaleQuestion({ question, value, onChange }: Props) {
         min={minScale}
         max={maxScale}
         value={safeValue}
-        onChange={(e) => onChange(parseInt(e.target.value, 10))}
+        onChange={(e) => onChange(Number(e.target.value))}
         className='w-full h-2 bg-gradient-to-r from-red-500 via-yellow-400 to-green-600 rounded-lg appearance-none cursor-pointer accent-indigo-600'
       />
       <div className='flex items-center justify-between text-sm text-gray-500'>
