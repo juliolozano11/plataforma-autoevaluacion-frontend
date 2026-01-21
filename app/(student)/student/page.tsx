@@ -6,7 +6,8 @@ import { Loading } from '@/components/ui/loading';
 import { useEvaluations } from '@/hooks/use-evaluations';
 import { useActiveQuestionnaires } from '@/hooks/use-questionnaires';
 import { useActiveSections } from '@/hooks/use-sections';
-import { EvaluationStatus, Section } from '@/types';
+import { filterValidEvaluations, getQuestionnaireId, getSectionId, resolveSection } from '@/lib/utils/evaluations';
+import { EvaluationStatus } from '@/types';
 import Link from 'next/link';
 
 export default function StudentDashboardPage() {
@@ -18,48 +19,7 @@ export default function StudentDashboardPage() {
   const isLoading =
     evaluationsLoading || sectionsLoading || questionnairesLoading;
 
-  // Función auxiliar para obtener el ID de sectionId de forma segura
-  const getEvaluationSectionId = (
-    sectionId: string | Section | null | undefined
-  ) => {
-    if (!sectionId || sectionId === null) {
-      return null;
-    }
-    if (typeof sectionId === 'object' && sectionId !== null) {
-      return sectionId?._id || null;
-    }
-    return sectionId;
-  };
-
-  // Función auxiliar para verificar si una evaluación tiene una sección válida
-  const hasValidSection = (evaluation: {
-    sectionId?: string | Section | null;
-  }) => {
-    // Si no hay sectionId o es null, la evaluación no es válida
-    if (!evaluation.sectionId) {
-      return false;
-    }
-
-    const sectionId = getEvaluationSectionId(evaluation.sectionId);
-    if (!sectionId) {
-      return false; // Si no se puede obtener el ID, la evaluación no es válida
-    }
-
-    // Verificar que la sección existe en la lista de secciones
-    // Esto es crítico: si la sección fue eliminada, no estará en la lista
-    const sectionExists =
-      sections?.some((s) => String(s._id) === String(sectionId)) ?? false;
-
-    if (!sectionExists) {
-      // La sección no existe, probablemente fue eliminada
-      return false;
-    }
-
-    return true;
-  };
-
-  // Filtrar evaluaciones para mostrar solo las que tienen secciones válidas
-  const validEvaluations = evaluations?.filter(hasValidSection) || [];
+  const validEvaluations = filterValidEvaluations(evaluations, sections);
 
   const stats = {
     pending:
@@ -76,43 +36,27 @@ export default function StudentDashboardPage() {
   // Obtener cuestionarios disponibles (sin evaluación completada y de secciones activas)
   const availableQuestionnaires =
     activeQuestionnaires?.filter((questionnaire) => {
-      const qSectionId =
-        typeof questionnaire.sectionId === 'object'
-          ? questionnaire.sectionId?._id
-          : questionnaire?.sectionId;
+      const qSectionId = getSectionId(questionnaire.sectionId);
+      const section = resolveSection(sections, questionnaire.sectionId);
 
-      // Verificar que la sección esté activa
-      const section =
-        typeof questionnaire.sectionId === 'object'
-          ? questionnaire.sectionId
-          : sections?.find((s) => s._id === qSectionId);
-
-      if (!section || !section.isActive) {
-        return false; // No mostrar si la sección no está activa
+      if (!section?.isActive || !qSectionId) {
+        return false;
       }
 
-      // Verificar si este cuestionario tiene evaluación completada
-      const hasCompletedEvaluation = validEvaluations.some((e) => {
-        // Verificar que e.sectionId y e.questionnaireId no sean null
-        if (!e.sectionId || !e.questionnaireId) {
-          return false;
-        }
-
-        const evalSectionId =
-          typeof e.sectionId === 'object' ? e.sectionId?._id : e.sectionId;
-        const evalQuestionnaireId =
-          typeof e.questionnaireId === 'object'
-            ? e.questionnaireId?._id
-            : e.questionnaireId;
+      const hasCompletedEvaluation = validEvaluations.some((evaluation) => {
+        const evalSectionId = getSectionId(evaluation.sectionId);
+        const evalQuestionnaireId = getQuestionnaireId(
+          evaluation.questionnaireId
+        );
 
         return (
+          evalSectionId &&
           String(evalSectionId) === String(qSectionId) &&
           String(evalQuestionnaireId) === String(questionnaire._id) &&
-          e.status === EvaluationStatus.COMPLETED
+          evaluation.status === EvaluationStatus.COMPLETED
         );
       });
 
-      // Mostrar solo si NO tiene evaluación completada
       return !hasCompletedEvaluation;
     }) || [];
 
