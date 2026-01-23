@@ -130,7 +130,7 @@ export default function AdminDashboardPage() {
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
             <Card className='p-6'>
               <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-                Acciones Rápidas
+                Configuraciones
               </h2>
               <div className='space-y-3'>
                 <Link

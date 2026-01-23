@@ -6,11 +6,11 @@ import { ErrorMessage } from '@/components/ui/error-message';
 import { Loading } from '@/components/ui/loading';
 import { useQuestionnaires } from '@/hooks/use-questionnaires';
 import {
-    useCreateQuestion,
-    useDeleteQuestion,
-    useQuestions,
-    useToggleQuestionActive,
-    useUpdateQuestion,
+  useCreateQuestion,
+  useDeleteQuestion,
+  useQuestions,
+  useToggleQuestionActive,
+  useUpdateQuestion,
 } from '@/hooks/use-questions';
 import { Question, Questionnaire, QuestionType } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -430,12 +430,12 @@ export default function QuestionsPage() {
       <div className='mb-4 flex items-center justify-between'>
         <div>
           {selectedQuestionnaireId ? (
-            <p className='text-sm text-gray-600'>
-              Filtrando por:{' '}
-              <span className='font-medium'>
-                {getQuestionnaireName(selectedQuestionnaireId)}
-              </span>
-            </p>
+          <p className='text-sm text-gray-600'>
+            Filtrando por:{' '}
+            <span className='font-medium'>
+              {getQuestionnaireName(selectedQuestionnaireId)}
+            </span>
+          </p>
           ) : (
             <p className='text-sm text-gray-600'>
               Mostrando todas las preguntas
@@ -459,7 +459,7 @@ export default function QuestionsPage() {
             ))}
           </select>
         </div>
-      </div>
+        </div>
 
       <div className='grid grid-cols-1 gap-4'>
         {questions && questions.length === 0 ? (

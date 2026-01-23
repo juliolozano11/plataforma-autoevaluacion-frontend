@@ -90,6 +90,7 @@ export const API_ENDPOINTS = {
   upload: {
     questions: '/upload/questions',
     formatInfo: '/upload/format-info',
+    template: '/upload/template',
   },
 } as const;
 

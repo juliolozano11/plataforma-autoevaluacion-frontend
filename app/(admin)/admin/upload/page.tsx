@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useQuestionnaires } from '@/hooks/use-questionnaires';
 import { useFormatInfo, useUploadQuestions } from '@/hooks/use-upload';
+import apiClient from '@/lib/api/client';
+import { API_ENDPOINTS } from '@/lib/api/endpoints';
 import { ApiErrorResponse } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
@@ -42,6 +44,29 @@ export default function UploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.upload.template, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'plantilla-preguntas.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error al descargar la plantilla:', error);
+      alert('Error al descargar la plantilla. Por favor, intenta nuevamente.');
     }
   };
 
@@ -152,9 +177,19 @@ export default function UploadPage() {
 
         {/* Información del formato */}
         <Card className='p-6'>
-          <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-            Formato Esperado
-          </h2>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-xl font-semibold text-gray-900'>
+              Formato Esperado
+            </h2>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={handleDownloadTemplate}
+              className='flex items-center gap-2'
+            >
+              📥 Descargar Plantilla
+            </Button>
+          </div>
           {csvFormatInfo ? (
             <div className='space-y-4'>
               <div>
@@ -220,6 +255,9 @@ export default function UploadPage() {
                 <li>
                   <strong>maxScale:</strong> Valor máximo de la escala (default:
                   10)
+                </li>
+                <li>
+                  <strong>responseType:</strong> Tipo de respuesta: "satisfaction", "frequency", "agreement" o "numeric" (default: "satisfaction")
                 </li>
                 <li>
                   <strong>points:</strong> Puntos que vale la pregunta (default:
